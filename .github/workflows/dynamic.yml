@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/dynamic_*.py'\n      - 'scripts/pattern_taxonomy.py'
+      - 'scripts/dynamic_*.py'
+      - 'scripts/pattern_taxonomy.py'
       - 'benchmarks/start.S'
       - '.github/workflows/dynamic.yml'
 jobs:
@@ -45,7 +46,9 @@ jobs:
           done
       - name: Map dependency graphs to four topologies
         run: python3 scripts/dynamic_mapper.py
-      - name: Classify dependency motifs\n        run: python3 scripts/pattern_taxonomy.py\n      - name: Print reproducible aggregate comparisons
+      - name: Classify dependency motifs
+        run: python3 scripts/pattern_taxonomy.py
+      - name: Print reproducible aggregate comparisons
         run: |
           python3 - <<'PY'
           import csv,collections,statistics

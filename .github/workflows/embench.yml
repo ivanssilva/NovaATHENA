@@ -21,7 +21,7 @@ jobs:
           ref: 09c2ed8c3b7008c95d08b038de4a3f6dc103ed70
           path: embench
       - name: Install RV32 Linux tools and QEMU
-        run: sudo apt-get update && sudo apt-get install -y gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu qemu-user
+        run: sudo apt-get update && sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf picolibc-riscv64-unknown-elf qemu-user
       - name: Record and audit Embench source
         run: |
           cd embench
@@ -46,7 +46,7 @@ jobs:
             BENCH=$(basename "$DIR")
             for OPT in 2 3; do
               ELF="athena/embench-results/${BENCH}_O${OPT}.elf"
-              riscv64-linux-gnu-gcc -march=rv32im -mabi=ilp32 -O"$OPT" -fno-builtin                 -Iembench/support -DWARMUP_HEAT=0 -DGLOBAL_SCALE_FACTOR=1                 runner.c "$DIR"/*.c embench/support/beebsc.c -static -lm -o "$ELF"
+              riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 -O"$OPT" -fno-builtin                 -Iembench/support -DWARMUP_HEAT=0 -DGLOBAL_SCALE_FACTOR=1                 runner.c "$DIR"/*.c embench/support/beebsc.c -static -lm -o "$ELF"
               qemu-riscv32 -d in_asm,exec,nochain -D "athena/embench-results/${BENCH}_O${OPT}.qemu.log" "$ELF"
               python3 athena/scripts/dynamic_trace.py "athena/embench-results/${BENCH}_O${OPT}.qemu.log" "athena/embench-results/${BENCH}_O${OPT}.trace.csv"
               rm -f "$ELF" "athena/embench-results/${BENCH}_O${OPT}.qemu.log"

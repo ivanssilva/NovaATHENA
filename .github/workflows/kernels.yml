@@ -1,0 +1,39 @@
+name: ATHENA kernel characterization stage 1
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'benchmarks/**'
+      - 'scripts/generate_kernels.py'
+      - 'scripts/analyze_static.py'
+      - '.github/workflows/kernels.yml'
+jobs:
+  characterize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install RISC-V toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu
+      - name: Generate kernels
+        run: python3 scripts/generate_kernels.py
+      - name: Compile and disassemble RV32IM at O0 O2 O3
+        run: |
+          mkdir -p benchmark-results
+          for SRC in benchmarks/generated/*.c; do
+            NAME=$(basename "$SRC" .c)
+            for OPT in 0 2 3; do
+              riscv64-linux-gnu-gcc -march=rv32im -mabi=ilp32 -ffreestanding -fno-builtin -O"$OPT" -S "$SRC" -o "benchmark-results/${NAME}_O${OPT}.s"
+              riscv64-linux-gnu-as -march=rv32im -mabi=ilp32 "benchmark-results/${NAME}_O${OPT}.s" -o "benchmark-results/${NAME}_O${OPT}.o"
+              riscv64-linux-gnu-objdump -d -M no-aliases "benchmark-results/${NAME}_O${OPT}.o" > "benchmark-results/${NAME}_O${OPT}.dis"
+            done
+          done
+      - name: Analyze static instruction dependency graphs
+        run: python3 scripts/analyze_static.py
+      - name: Upload outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: athena-kernel-stage1
+          path: benchmark-results/

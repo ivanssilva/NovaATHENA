@@ -51,7 +51,8 @@ jobs:
             BENCH=$(basename "$DIR")
             for OPT in 2 3; do
               ELF="athena/embench-results/${BENCH}_O${OPT}.elf"
-              riscv64-unknown-elf-gcc --specs=/usr/lib/picolibc/riscv64-unknown-elf/picolibc.specs --oslib=semihost -march=rv32im -mabi=ilp32 -O"$OPT" -fno-builtin -Iembench/support -DWARMUP_HEAT=0 -DGLOBAL_SCALE_FACTOR=1 runner.c "$DIR"/*.c embench/support/beebsc.c -lm -o "$ELF"
+              riscv64-unknown-elf-gcc --specs=/usr/lib/picolibc/riscv64-unknown-elf/picolibc.specs --oslib=semihost -march=rv32im -mabi=ilp32 -O"$OPT" -fno-builtin -Iembench/support -DWARMUP_HEAT=0 -DGLOBAL_SCALE_FACTOR=1 runner.c "$DIR"/*.c embench/support/beebsc.c -Wl,-Ttext-segment=0x80200000 -lm -o "$ELF"
+              riscv64-unknown-elf-readelf -h -l "$ELF" > "athena/embench-results/${BENCH}_O${OPT}.elf-layout.txt"
               timeout 60s qemu-system-riscv32 -M virt -nographic -bios opensbi-1.5-rv-bin/share/opensbi/ilp32/generic/firmware/fw_dynamic.bin -semihosting-config enable=on,target=native -kernel "$ELF" -d in_asm,exec,nochain -D "athena/embench-results/${BENCH}_O${OPT}.qemu.log"
               python3 athena/scripts/dynamic_trace.py "athena/embench-results/${BENCH}_O${OPT}.qemu.log" "athena/embench-results/${BENCH}_O${OPT}.trace.csv"
               rm -f "$ELF" "athena/embench-results/${BENCH}_O${OPT}.qemu.log"

@@ -45,6 +45,34 @@ jobs:
           done
       - name: Map dependency graphs to four topologies
         run: python3 scripts/dynamic_mapper.py
+      - name: Print reproducible aggregate comparisons
+        run: |
+          python3 - <<'PY'
+          import csv,collections,statistics
+          rows=list(csv.DictReader(open('dynamic-results/dynamic_summary.csv')))
+          print('AGGREGATE_START')
+          for kind in ('4x4','4x4_1f','pe6','pe6_1f'):
+              rr=[r for r in rows if r['topology']==kind]
+              for opt in ('O0','O2','O3'):
+                  ss=[r for r in rr if r['kernel'].endswith('_'+opt)]
+                  print('SUMMARY',kind,opt,'n',len(ss), 'exec',sum(int(r['executed_instructions']) for r in ss),
+                    'eligible',sum(int(r['eligible_alu_ops']) for r in ss),
+                    'convergent',sum(int(r['convergent_nodes']) for r in ss),
+                    'divergent',sum(int(r['divergent_nodes']) for r in ss),
+                    'depth3',sum(int(r['depth_ge3']) for r in ss),
+                    'configs',sum(int(r['configurations']) for r in ss),
+                    'mapped',sum(int(r['mapped_ops']) for r in ss),
+                    'fused',sum(int(r['fused_2producer']) for r in ss),
+                    'mean_occupancy',round(statistics.mean(float(r['mean_ops_per_configuration']) for r in ss),4))
+          print('FAMILY_START')
+          for fam in sorted({r['kernel'].split('_v')[0] for r in rows}):
+              for kind in ('4x4','4x4_1f','pe6','pe6_1f'):
+                  ss=[r for r in rows if r['kernel'].startswith(fam+'_') and r['kernel'].endswith('_O2') and r['topology']==kind]
+                  print('FAMILY',fam,kind,'configs',sum(int(r['configurations']) for r in ss),
+                    'mapped',sum(int(r['mapped_ops']) for r in ss),
+                    'fused',sum(int(r['fused_2producer']) for r in ss))
+          print('AGGREGATE_END')
+          PY
       - name: Upload dynamic measurements
         if: always()
         uses: actions/upload-artifact@v4

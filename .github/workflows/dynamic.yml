@@ -1,0 +1,40 @@
+name: ATHENA dynamic RV32 characterization
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/dynamic_*.py'
+      - 'benchmarks/start.S'
+      - '.github/workflows/dynamic.yml'
+jobs:
+  dynamic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install RV32 tools and QEMU
+        run: sudo apt-get update && sudo apt-get install -y gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu qemu-user
+      - name: Generate controlled kernels
+        run: python3 scripts/generate_kernels.py
+      - name: Execute RV32 ELF and reconstruct dynamic instruction traces
+        run: |
+          mkdir -p dynamic-results
+          for SRC in benchmarks/generated/*.c; do
+            NAME=$(basename "$SRC" .c)
+            for OPT in 0 2 3; do
+              ELF="dynamic-results/${NAME}_O${OPT}.elf"
+              riscv64-linux-gnu-gcc -march=rv32im -mabi=ilp32 -O"$OPT" -ffreestanding -fno-builtin -nostdlib -static -Wl,-e,_start -Wl,--no-relax benchmarks/start.S "$SRC" -o "$ELF"
+              qemu-riscv32 -d in_asm,exec,nochain -D "dynamic-results/${NAME}_O${OPT}.qemu.log" "$ELF" || STATUS=$?
+              python3 scripts/dynamic_trace.py "dynamic-results/${NAME}_O${OPT}.qemu.log" "dynamic-results/${NAME}_O${OPT}.trace.csv"
+              rm -f "$ELF" "dynamic-results/${NAME}_O${OPT}.qemu.log"
+            done
+          done
+      - name: Map dependency graphs to four topologies
+        run: python3 scripts/dynamic_mapper.py
+      - name: Upload dynamic measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: athena-rv32-dynamic
+          path: dynamic-results/

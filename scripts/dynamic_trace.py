@@ -25,4 +25,7 @@ with dest.open("w",newline="") as f:
   for addr,op,args in blocks.get(pc,[]):
    w.writerow([seq,hex(addr),op,args,hex(pc)]);seq+=1
 print(f"{src.name}: TBs={len(trace)}, instructions={seq}, missing_TBs={missing}")
-if missing or not trace or not seq:\n print('DEBUG: initial QEMU log lines:')\n print('\\n'.join(src.read_text(errors='replace').splitlines()[:75]))\n sys.exit(2)
+if missing or not trace or not seq:
+ print('DEBUG: initial QEMU log lines:')
+ print('\\n'.join(src.read_text(errors='replace').splitlines()[:75]))
+ sys.exit(2)

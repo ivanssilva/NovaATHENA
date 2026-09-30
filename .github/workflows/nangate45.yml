@@ -1,0 +1,28 @@
+name: ATHENA Nangate45 synthesis
+on:
+  push:
+    branches: [main]
+    paths: ['rtl/**','scripts/**','.github/workflows/nangate45.yml']
+  workflow_dispatch:
+jobs:
+  synthesis:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Yosys
+        run: sudo apt-get update && sudo apt-get install -y yosys
+      - name: Fetch Nangate45 Liberty
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git orfs
+          cd orfs
+          git sparse-checkout set flow/platforms/nangate45/lib
+          test -s flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib
+      - name: Map all four topologies
+        run: bash scripts/run.sh
+      - name: Publish synthesis reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: athena-nangate45-synthesis
+          path: reports/

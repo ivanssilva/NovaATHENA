@@ -17,6 +17,19 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu qemu-user
       - name: Generate controlled kernels
         run: python3 scripts/generate_kernels.py
+      - name: Preflight Python syntax and QEMU parser fixture
+        run: |
+          python3 -m py_compile scripts/dynamic_trace.py scripts/dynamic_mapper.py
+          cat > /tmp/qemu-fixture.log <<'EOF'
+          ----------------
+          IN:
+          0x000100f8:  00000097          auipc                   ra,0
+          0x000100fc:  010080e7          jalr                    ra,ra,16
+
+          Trace 0: 0x7fb488000100 [00000000/00000000000100f8/04018078/00000200]
+          EOF
+          python3 scripts/dynamic_trace.py /tmp/qemu-fixture.log /tmp/qemu-fixture.csv
+          test "$(wc -l < /tmp/qemu-fixture.csv)" -eq 3
       - name: Execute RV32 ELF and reconstruct dynamic instruction traces
         run: |
           mkdir -p dynamic-results

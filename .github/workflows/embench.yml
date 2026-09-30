@@ -1,0 +1,78 @@
+name: ATHENA Embench structural mining
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/embench_template_miner.py'
+      - 'scripts/dynamic_trace.py'
+      - '.github/workflows/embench.yml'
+jobs:
+  embench:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: athena
+      - uses: actions/checkout@v4
+        with:
+          repository: embench/embench-iot
+          ref: 09c2ed8c3b7008c95d08b038de4a3f6dc103ed70
+          path: embench
+      - name: Install RV32 Linux tools and QEMU
+        run: sudo apt-get update && sudo apt-get install -y gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu qemu-user
+      - name: Record and audit Embench source
+        run: |
+          cd embench
+          git rev-parse HEAD | tee ../athena/EMBENCH_REVISION.txt
+          test "$(find src -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 19
+      - name: Create trace harness
+        run: |
+          cat > runner.c <<'EOF'
+          extern void initialise_benchmark(void);
+          extern int benchmark(void);
+          extern int verify_benchmark(int);
+          int main(void) {
+            initialise_benchmark();
+            int result = benchmark();
+            return verify_benchmark(result) == 0 ? 0 : 1;
+          }
+          EOF
+      - name: Compile and trace 19 Embench programs
+        run: |
+          mkdir -p athena/embench-results
+          for DIR in embench/src/*; do
+            BENCH=$(basename "$DIR")
+            for OPT in 2 3; do
+              ELF="athena/embench-results/${BENCH}_O${OPT}.elf"
+              riscv64-linux-gnu-gcc -march=rv32im -mabi=ilp32 -O"$OPT" -fno-builtin                 -Iembench/support -DWARMUP_HEAT=0 -DGLOBAL_SCALE_FACTOR=1                 runner.c "$DIR"/*.c embench/support/beebsc.c -static -lm -o "$ELF"
+              qemu-riscv32 -d in_asm,exec,nochain -D "athena/embench-results/${BENCH}_O${OPT}.qemu.log" "$ELF"
+              python3 athena/scripts/dynamic_trace.py "athena/embench-results/${BENCH}_O${OPT}.qemu.log" "athena/embench-results/${BENCH}_O${OPT}.trace.csv"
+              rm -f "$ELF" "athena/embench-results/${BENCH}_O${OPT}.qemu.log"
+            done
+          done
+          test "$(find athena/embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Mine recurrent topology-agnostic templates
+        working-directory: athena
+        run: python3 scripts/embench_template_miner.py
+      - name: Audit counts
+        working-directory: athena
+        run: |
+          python3 - <<'PY'
+          import csv,glob,os
+          traces=glob.glob('embench-results/*.trace.csv')
+          rows=list(csv.DictReader(open('embench-results/recurrent_templates.csv')))
+          print('AUDIT traces',len(traces),'benchmarks',len({os.path.basename(x).rsplit('_O',1)[0] for x in traces}))
+          for opt in ('O2','O3'):
+              r=[x for x in rows if x['opt']==opt]
+              print('AUDIT',opt,'templates',len(r),'recurrent_nonoverlap',sum(int(x['nonoverlap_occurrences'])>=2 for x in r),'cross_benchmark',sum(int(x['benchmark_prevalence'])>=2 for x in r))
+          PY
+      - name: Upload structural measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: athena-embench-structural
+          path: |
+            athena/embench-results/
+            athena/EMBENCH_REVISION.txt

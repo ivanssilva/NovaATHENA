@@ -32,6 +32,46 @@ jobs:
           cd embench
           git rev-parse HEAD | tee ../athena/EMBENCH_REVISION.txt
           test "$(find src -mindepth 1 -maxdepth 1 -type d | wc -l)" -eq 19
+      - name: Create controlled RV32 bare-metal runtime
+        run: |
+          cat > startup.S <<'EOF'
+          .section .text.start
+          .globl _start
+          _start:
+            la sp, __stack_top
+            la t0, __bss_start
+            la t1, __bss_end
+          1:
+            bgeu t0, t1, 2f
+            sw zero, 0(t0)
+            addi t0, t0, 4
+            j 1b
+          2:
+            call main
+            li t0, 0x100000
+            beqz a0, 3f
+            li t1, 0x3333
+            sw t1, 0(t0)
+          4: j 4b
+          3:
+            li t1, 0x5555
+            sw t1, 0(t0)
+          5: j 5b
+          EOF
+          cat > qemu-virt-rv32.ld <<'EOF'
+          ENTRY(_start)
+          MEMORY { ram (rwx) : ORIGIN = 0x80000000, LENGTH = 16M }
+          SECTIONS {
+            . = ORIGIN(ram);
+            .text : { KEEP(*(.text.start)) *(.text .text.*) } > ram
+            .rodata : { *(.rodata .rodata.*) *(.srodata .srodata.*) } > ram
+            .data : { *(.data .data.*) *(.sdata .sdata.*) } > ram
+            .bss (NOLOAD) : { __bss_start = .; *(.bss .bss.*) *(.sbss .sbss.*) *(COMMON); __bss_end = .; } > ram
+            . = ALIGN(16);
+            . = ORIGIN(ram) + LENGTH(ram);
+            __stack_top = .;
+          }
+          EOF
       - name: Create trace harness
         run: |
           cat > runner.c <<'EOF'
@@ -51,9 +91,9 @@ jobs:
             BENCH=$(basename "$DIR")
             for OPT in 2 3; do
               ELF="athena/embench-results/${BENCH}_O${OPT}.elf"
-              riscv64-unknown-elf-gcc --specs=/usr/lib/picolibc/riscv64-unknown-elf/picolibc.specs --oslib=semihost -march=rv32im -mabi=ilp32 -O"$OPT" -fno-builtin -Iembench/support -DWARMUP_HEAT=0 -DGLOBAL_SCALE_FACTOR=1 runner.c "$DIR"/*.c embench/support/beebsc.c -Wl,-Ttext-segment=0x80200000 -lm -o "$ELF"
+              riscv64-unknown-elf-gcc --specs=/usr/lib/picolibc/riscv64-unknown-elf/picolibc.specs -nostartfiles -march=rv32im -mabi=ilp32 -O"$OPT" -fno-builtin -Iembench/support -DWARMUP_HEAT=0 -DGLOBAL_SCALE_FACTOR=1 startup.S runner.c "$DIR"/*.c embench/support/beebsc.c -T qemu-virt-rv32.ld -lm -o "$ELF"
               riscv64-unknown-elf-readelf -h -l "$ELF" > "athena/embench-results/${BENCH}_O${OPT}.elf-layout.txt"
-              timeout 60s qemu-system-riscv32 -M virt -nographic -bios opensbi-1.5-rv-bin/share/opensbi/ilp32/generic/firmware/fw_dynamic.bin -semihosting-config enable=on,target=native -kernel "$ELF" -d in_asm,exec,nochain -D "athena/embench-results/${BENCH}_O${OPT}.qemu.log"
+              timeout 60s qemu-system-riscv32 -M virt -m 16M -nographic -bios none -kernel "$ELF" -d in_asm,exec,nochain -D "athena/embench-results/${BENCH}_O${OPT}.qemu.log"
               python3 athena/scripts/dynamic_trace.py "athena/embench-results/${BENCH}_O${OPT}.qemu.log" "athena/embench-results/${BENCH}_O${OPT}.trace.csv"
               rm -f "$ELF" "athena/embench-results/${BENCH}_O${OPT}.qemu.log"
             done

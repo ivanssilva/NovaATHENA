@@ -3,32 +3,29 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['physical/**','.github/workflows/physical.yml','rtl/**']
+    paths:
+      - 'physical/**'
+      - '.github/workflows/physical.yml'
+      - 'rtl/**'
 jobs:
   physical:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
-      - name: Generate equivalent registered wrappers
+      - name: Generate registered wrappers
         run: python3 scripts/generate_physical.py
-      - name: OpenROAD physical implementation
+      - name: Run ORFS
         run: |
           mkdir -p physical-results/orfs
           docker pull openroad/orfs:latest
           for TOP in athena_4x4 athena_pe6 athena_4x4_1f athena_pe6_1f; do
-            echo "Physical flow for $TOP"
-            docker run --rm -v "$PWD":/work -w /OpenROAD-flow-scripts/flow openroad/orfs:latest \
-              bash -lc "make DESIGN_CONFIG=/work/physical/$TOP.mk FLOW_VARIANT=$TOP WORK_HOME=/work/physical-results/orfs NUM_CORES=2" \
-              > "physical-results/$TOP.log" 2>&1 || echo "$TOP FAILED" >> physical-results/failures.txt
-            docker run --rm -v "$PWD":/work -w /OpenROAD-flow-scripts/flow openroad/orfs:latest \
-              bash -lc "find reports/nangate45 -type f -path '*$TOP*' -print | head" \
-              >> "physical-results/$TOP.log" 2>&1 || true
+            docker run --rm -v "$PWD":/work -w /OpenROAD-flow-scripts/flow openroad/orfs:latest bash -lc "make DESIGN_CONFIG=/work/physical/$TOP.mk FLOW_VARIANT=$TOP WORK_HOME=/work/physical-results/orfs NUM_CORES=2" > "physical-results/$TOP.log" 2>&1 || echo "$TOP FAILED" >> physical-results/failures.txt
           done
-          find physical-results/orfs/reports -type f \\( -name "*.json" -o -name "*.rpt" \\) -print | head -80 > physical-results/report-index.txt || true\n          if [ -f physical-results/failures.txt ]; then cat physical-results/failures.txt; exit 1; fi
-      - name: Upload diagnostic logs
+          if test -f physical-results/failures.txt; then cat physical-results/failures.txt; exit 1; fi
+      - name: Upload logs and reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: athena-nangate45-physical-logs
-          path: |\n            physical-results/*.log\n            physical-results/*.txt\n            physical-results/orfs/reports/\n            physical-results/orfs/logs/
+          name: athena-nangate45-physical
+          path: physical-results/

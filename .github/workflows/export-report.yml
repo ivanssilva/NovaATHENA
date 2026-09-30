@@ -1,0 +1,84 @@
+name: Export ATHENA incremental report DOCX
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/ATHENA_nota_incremental_III.md'
+      - '.github/workflows/export-report.yml'
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install --break-system-packages python-docx markdown-it-py
+      - name: Build formatted DOCX
+        run: |
+          cat > /tmp/export.py <<'PY'
+          from docx import Document
+          from docx.shared import Inches,Pt
+          from docx.enum.text import WD_ALIGN_PARAGRAPH
+          from markdown_it import MarkdownIt
+          from pathlib import Path
+          src=Path('docs/ATHENA_nota_incremental_III.md').read_text()
+          tokens=MarkdownIt('commonmark',{'html':False}).parse(src)
+          d=Document();sec=d.sections[0];sec.top_margin=Inches(.78);sec.bottom_margin=Inches(.72)
+          sec.left_margin=Inches(.85);sec.right_margin=Inches(.85)
+          styles=d.styles;styles['Normal'].font.name='Aptos';styles['Normal'].font.size=Pt(9)
+          styles['Normal'].paragraph_format.space_after=Pt(5)
+          def add_inline(p,token):
+              if not token or not token.children:return
+              for c in token.children:
+                  if c.type=='text':p.add_run(c.content)
+                  elif c.type=='code_inline':
+                      r=p.add_run(c.content);r.font.name='Consolas';r.font.size=Pt(8)
+                  elif c.type=='softbreak':p.add_run(' ')
+                  elif c.type=='hardbreak':p.add_run('\n')
+                  elif c.type=='link_open':pass
+                  elif c.type=='link_close':pass
+                  elif c.type=='strong_open':pass
+                  elif c.type=='strong_close':pass
+                  elif c.type=='em_open':pass
+                  elif c.type=='em_close':pass
+          i=0
+          while i<len(tokens):
+              t=tokens[i]
+              if t.type=='heading_open':
+                  level=int(t.tag[1]);p=d.add_heading(level=min(level,3));add_inline(p,tokens[i+1]);i+=3;continue
+              if t.type=='paragraph_open':
+                  p=d.add_paragraph();add_inline(p,tokens[i+1]);i+=3;continue
+              if t.type in ('bullet_list_open','ordered_list_open'):
+                  typ=t.type;i+=1
+                  while i<len(tokens) and tokens[i].type not in ('bullet_list_close','ordered_list_close'):
+                      if tokens[i].type=='inline':
+                          p=d.add_paragraph(style='List Number' if typ=='ordered_list_open' else 'List Bullet')
+                          add_inline(p,tokens[i])
+                      i+=1
+                  i+=1;continue
+              if t.type=='table_open':
+                  i+=1;rows=[];row=None;cell=None
+                  while i<len(tokens) and tokens[i].type!='table_close':
+                      z=tokens[i]
+                      if z.type=='tr_open':row=[]
+                      elif z.type in ('th_open','td_open'):cell=''
+                      elif z.type=='inline' and cell is not None:cell=z.content
+                      elif z.type in ('th_close','td_close'):row.append(cell);cell=None
+                      elif z.type=='tr_close':rows.append(row)
+                      i+=1
+                  if rows:
+                      table=d.add_table(rows=len(rows),cols=max(map(len,rows)))
+                      table.style='Light Shading Accent 1'
+                      for ri,row in enumerate(rows):
+                          for ci,v in enumerate(row):table.cell(ri,ci).text=v
+                  i+=1;continue
+              i+=1
+          footer=sec.footer.paragraphs[0];footer.text='ATHENA-T/ROB • Nota incremental III • Resultados preliminares e rastreabilidade'
+          footer.alignment=WD_ALIGN_PARAGRAPH.CENTER
+          out=Path('ATHENA_nota_incremental_III.docx');d.save(out)
+          print('Exported',out,out.stat().st_size,'bytes')
+          PY
+          python3 /tmp/export.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ATHENA_nota_incremental_III_DOCX
+          path: ATHENA_nota_incremental_III.docx

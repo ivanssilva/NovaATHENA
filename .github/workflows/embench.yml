@@ -138,6 +138,25 @@ jobs:
               r=[x for x in rows if x['opt']==opt]
               print('AUDIT',opt,'templates',len(r),'recurrent_nonoverlap',sum(int(x['nonoverlap_occurrences'])>=2 for x in r),'cross_benchmark',sum(int(x['benchmark_prevalence'])>=2 for x in r))
           PY
+      - name: Derive timing-neutral candidate G_t families
+        working-directory: athena
+        run: python3 scripts/embench_gt_extractor.py
+      - name: Audit candidate G_t outputs
+        working-directory: athena
+        run: |
+          python3 - <<'PY'
+          import csv,glob
+          rows=list(csv.DictReader(open('embench-results/gt_audit.csv')))
+          assert len(rows)==38*3, len(rows)
+          for D in ('1','2','3'):
+              r=[x for x in rows if x['D']==D]
+              assert len(r)==38, (D,len(r))
+              assert all(int(x['covered_alu_ops'])>0 for x in r)
+              print('GT_AUDIT D',D,'traces',len(r),
+                    'groups',sum(int(x['candidate_Gt']) for x in r),
+                    'covered_alu_ops',sum(int(x['covered_alu_ops']) for x in r),
+                    'max_group_ops',max(int(x['max_group_ops']) for x in r))
+          PY
       - name: Upload structural measurements
         if: always()
         uses: actions/upload-artifact@v4

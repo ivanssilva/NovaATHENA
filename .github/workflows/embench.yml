@@ -99,10 +99,34 @@ jobs:
             done
           done
           test "$(find athena/embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Audit generated traces
+        working-directory: athena
+        run: |
+          python3 - <<'PY'
+          import csv,glob,os
+          traces=sorted(glob.glob('embench-results/*.trace.csv'))
+          benches={os.path.basename(x).rsplit('_O',1)[0] for x in traces}
+          assert len(traces)==38, len(traces)
+          assert len(benches)==19, len(benches)
+          with open('EMBENCH_REVISION.txt') as f:
+              rev=f.read().strip()
+          assert rev=='09c2ed8c3b7008c95d08b038de4a3f6dc103ed70', rev
+          out=[]
+          for p in traces:
+              with open(p,newline='') as f:
+                  n=sum(1 for _ in csv.DictReader(f))
+              assert n>0, p
+              out.append((os.path.basename(p),n))
+          with open('embench-results/pre_mining_trace_audit.csv','w',newline='') as f:
+              w=csv.writer(f); w.writerow(['trace','rows']); w.writerows(out)
+          print('AUDIT traces',len(traces),'benchmarks',len(benches),'revision',rev,
+                'min_rows',min(n for _,n in out),'max_rows',max(n for _,n in out),
+                'total_rows',sum(n for _,n in out))
+          PY
       - name: Mine recurrent topology-agnostic templates
         working-directory: athena
         run: python3 scripts/embench_template_miner.py
-      - name: Audit counts
+      - name: Audit mining results
         working-directory: athena
         run: |
           python3 - <<'PY'
@@ -119,6 +143,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: athena-embench-structural
+          compression-level: 9
           path: |
             athena/embench-results/
             athena/EMBENCH_REVISION.txt

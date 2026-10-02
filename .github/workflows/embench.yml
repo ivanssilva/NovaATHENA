@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'scripts/embench_template_miner.py'
+      - 'scripts/embench_gt_extractor.py'
+      - 'scripts/embench_gt_capacity.py'
       - 'scripts/dynamic_trace.py'
       - '.github/workflows/embench.yml'
 jobs:
@@ -157,6 +159,40 @@ jobs:
                     'covered_alu_ops',sum(int(x['covered_alu_ops']) for x in r),
                     'max_group_ops',max(int(x['max_group_ops']) for x in r))
           PY
+      - name: Derive capacity-bounded candidate G_t families
+        working-directory: athena
+        run: python3 scripts/embench_gt_capacity.py
+      - name: Audit capacity-bounded G_t outputs
+        working-directory: athena
+        run: |
+          python3 - <<'PY'
+          import csv,glob
+          rows=list(csv.DictReader(open('embench-results/gt_capacity_audit.csv')))
+          assert len(rows)==38*3*4, len(rows)
+          files=glob.glob('embench-results/gt_capacity/*.csv')
+          assert len(files)==38*3*4, len(files)
+          for D in ('1','2','3'):
+            for C in ('4','6','8','12'):
+              r=[x for x in rows if x['D']==D and x['C']==C]
+              assert len(r)==38,(D,C,len(r))
+              assert all(int(x['covered_alu_ops'])>0 for x in r)
+              assert all(int(x['max_group_ops'])<=int(C) for x in r)
+              print('GTC_AUDIT D',D,'C',C,'traces',len(r),
+                    'groups',sum(int(x['candidate_Gt']) for x in r),
+                    'covered',sum(int(x['covered_alu_ops']) for x in r),
+                    'max',max(int(x['max_group_ops']) for x in r))
+          PY
+      - name: Upload compact G_t summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: athena-embench-gt-summary
+          path: |
+            athena/embench-results/gt_audit.csv
+            athena/embench-results/gt_signature_counts.csv
+            athena/embench-results/gt_capacity_audit.csv
+            athena/embench-results/gt_capacity_signature_counts.csv
+            athena/embench-results/gt_operation_coverage.csv
+            athena/EMBENCH_REVISION.txt
       - name: Upload structural measurements
         if: always()
         uses: actions/upload-artifact@v4

@@ -27,6 +27,7 @@ jobs:
           cd restored
           gh run download 36900929836 --repo ivanssilva/NovaATHENA --name athena-embench-structural
           test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+          mkdir -p ../athena/embench-results
           cp embench-results/*.trace.csv ../athena/embench-results/
           cp EMBENCH_REVISION.txt ../athena/
       - name: Audit restored corpus identity

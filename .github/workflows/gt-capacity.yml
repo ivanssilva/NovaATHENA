@@ -1,0 +1,86 @@
+name: ATHENA G_t capacity analysis
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/embench_gt_capacity.py'
+      - '.github/workflows/gt-capacity.yml'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  gt-capacity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: athena
+      - name: Restore validated trace corpus from run 15
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir restored
+          cd restored
+          gh run download 36900929836 --repo ivanssilva/NovaATHENA --name athena-embench-structural
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+          cp embench-results/*.trace.csv ../athena/embench-results/
+          cp EMBENCH_REVISION.txt ../athena/
+      - name: Audit restored corpus identity
+        working-directory: athena
+        run: |
+          python3 - <<'PY'
+          import csv,glob,os,re
+          traces=sorted(glob.glob('embench-results/*.trace.csv'))
+          assert len(traces)==38,len(traces)
+          pairs={}
+          total=0
+          for p in traces:
+              b=os.path.basename(p)
+              m=re.match(r'(.+)_O([23])\.trace\.csv$',b); assert m,b
+              pairs.setdefault(m.group(1),set()).add(m.group(2))
+              with open(p,newline='') as f: n=sum(1 for _ in csv.DictReader(f))
+              assert n>0,p; total+=n
+          assert len(pairs)==19 and all(v=={'2','3'} for v in pairs.values()),pairs
+          rev=open('EMBENCH_REVISION.txt').read().strip()
+          assert rev=='09c2ed8c3b7008c95d08b038de4a3f6dc103ed70',rev
+          print('RESTORED_CORPUS traces',len(traces),'benchmarks',len(pairs),'rows',total,'revision',rev)
+          PY
+      - name: Derive capacity-bounded candidate G_t families
+        working-directory: athena
+        run: python3 scripts/embench_gt_capacity.py
+      - name: Audit all 456 trace-depth-capacity results
+        working-directory: athena
+        run: |
+          python3 - <<'PY'
+          import csv,glob
+          rows=list(csv.DictReader(open('embench-results/gt_capacity_audit.csv')))
+          assert len(rows)==38*3*4,len(rows)
+          files=glob.glob('embench-results/gt_capacity/*.csv')
+          assert len(files)==38*3*4,len(files)
+          totals=set()
+          for D in ('1','2','3'):
+            for C in ('4','6','8','12'):
+              r=[x for x in rows if x['D']==D and x['C']==C]
+              assert len(r)==38,(D,C,len(r))
+              cov=sum(int(x['covered_alu_ops']) for x in r); totals.add(cov)
+              assert all(int(x['max_group_ops'])<=int(C) for x in r)
+              print('GTC_AUDIT D',D,'C',C,'traces',len(r),
+                    'groups',sum(int(x['candidate_Gt']) for x in r),
+                    'covered',cov,'max',max(int(x['max_group_ops']) for x in r))
+          assert len(totals)==1,totals
+          print('GTC_COMPLETE combinations',len(rows),'common_covered_alu_ops',totals.pop())
+          PY
+      - name: Upload compact capacity summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: athena-embench-gt-capacity-summary
+          compression-level: 9
+          path: |
+            athena/embench-results/gt_capacity_audit.csv
+            athena/embench-results/gt_capacity_signature_counts.csv
+            athena/embench-results/gt_operation_coverage.csv
+            athena/EMBENCH_REVISION.txt

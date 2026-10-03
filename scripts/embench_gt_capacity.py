@@ -119,6 +119,18 @@ with open('embench-results/gt_operation_coverage.csv','w',newline='') as f:
     w=csv.writer(f);w.writerow(['trace','op','eligible_alu','occurrences'])
     for k,n in sorted(opfreq.items()):w.writerow([*k,n])
 
+# Article-oriented compact summaries for PE derivation (Step 3).
+# These summaries preserve dynamic occurrence, operation-weighted mass, and
+# benchmark prevalence separately; none is a cycle count or speedup metric.
+with open('embench-results/gt_pe_evidence.csv','w',newline='') as f:
+    w=csv.writer(f);w.writerow(['opt','D','C','ops','depth','max_width','joins','forks','external_inputs','unconsumed_defs','mul_ops','groups','dynamic_ops','benchmarks'])
+    acc=collections.defaultdict(lambda:[0,0,set()])
+    for k,n in descriptor_aggregate.items():
+        benchmark,opt,D,C,ops,depth,max_width,joins,forks,external_inputs,unconsumed_defs,mul_ops=k
+        a=acc[(opt,D,C,ops,depth,max_width,joins,forks,external_inputs,unconsumed_defs,mul_ops)]
+        a[0]+=n;a[1]+=n*ops;a[2].add(benchmark)
+    for k,(groups,dynops,benches) in sorted(acc.items()):w.writerow([*k,groups,dynops,len(benches)])
+
 print('GTC_AUDIT_START')
 for D in DEPTHS:
   for C in CAPS:

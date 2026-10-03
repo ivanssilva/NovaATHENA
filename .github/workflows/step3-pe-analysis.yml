@@ -1,0 +1,37 @@
+name: ATHENA Step 3 PE benchmark analysis
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/step3_pe_benchmark_analysis.py'
+      - '.github/workflows/step3-pe-analysis.yml'
+permissions:
+  actions: read
+  contents: read
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: athena}
+      - name: Restore validated Step 3 evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir restored && cd restored
+          gh run download 37145305760 --repo ivanssilva/NovaATHENA --name athena-embench-gt-capacity-summary
+          cp gt_capacity_descriptor_counts.csv ../athena/
+          cp EMBENCH_REVISION.txt ../athena/
+      - name: Analyze benchmark-balanced PE evidence
+        working-directory: athena
+        run: python3 scripts/step3_pe_benchmark_analysis.py
+      - name: Upload Step 3 analysis
+        uses: actions/upload-artifact@v4
+        with:
+          name: athena-step3-pe-benchmark-analysis
+          path: |
+            athena/step3_pe_benchmark_summary.csv
+            athena/step3_pe_marginal_proxy.csv
+            athena/step3_pe_analysis.md

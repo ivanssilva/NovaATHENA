@@ -159,6 +159,20 @@ with open('embench-results/gt_pe_family_summary.csv','w',newline='') as f:
     for k,(groups,dynops,benches) in sorted(fam.items()):
         w.writerow([*k,groups,dynops,len(benches)])
 
+
+print('STEP3_FAMILY_START')
+for opt in ('O2','O3'):
+    for D,C in ((1,8),(2,8),(3,8),(3,4),(3,6),(3,12)):
+        rows=[]
+        total_ops=0
+        for (o,d,cap,family),(groups,dynops,benches) in fam.items():
+            if o==opt and d==D and cap==C:
+                rows.append((dynops,groups,len(benches),family)); total_ops+=dynops
+        print('STEP3_FAMILY',opt,'D',D,'C',C,'total_dynamic_ops',total_ops)
+        for dynops,groups,nbench,family in sorted(rows,reverse=True):
+            print('STEP3_FAMROW',opt,D,C,family,'groups',groups,'dynamic_ops',dynops,
+                  'share',f'{dynops/total_ops:.8f}' if total_ops else '0','benchmarks',nbench)
+print('STEP3_FAMILY_END')
 print('GTC_AUDIT_START')
 for D in DEPTHS:
   for C in CAPS:

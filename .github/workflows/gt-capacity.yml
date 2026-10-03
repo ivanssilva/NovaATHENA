@@ -83,5 +83,7 @@ jobs:
           path: |
             athena/embench-results/gt_capacity_audit.csv
             athena/embench-results/gt_capacity_signature_counts.csv
+            athena/embench-results/gt_capacity_benchmark_signature_counts.csv
+            athena/embench-results/gt_capacity_descriptor_counts.csv
             athena/embench-results/gt_operation_coverage.csv
             athena/EMBENCH_REVISION.txt

@@ -25,7 +25,7 @@ class Group:
     def __init__(self,D,C): self.D=D;self.C=C;self.reset()
     def reset(self):
         self.nodes=[];self.writers={};self.depths=[];self.width=collections.Counter()
-        self.ext=set();self.used=set();self.succ=collections.Counter();self.mul=0
+        self.ext=set();self.used=set();self.succ=collections.Counter();self.mul=0;self.defines=[]
     def empty(self):return not self.nodes
     def prospective(self,src):
         deps=tuple(sorted(set(self.writers[s] for s in src if s!='zero' and s in self.writers)))
@@ -38,6 +38,7 @@ class Group:
             if s!='zero' and s not in self.writers:self.ext.add(s)
         for p in deps:self.used.add(p);self.succ[p]+=1
         self.nodes.append((op,deps));self.depths.append(dep);self.width[dep]+=1
+        self.defines.append(dst!='zero')
         if dst!='zero':self.writers[dst]=i
         if op.startswith('mul'):self.mul+=1
     def row(self):
@@ -46,7 +47,7 @@ class Group:
           'joins':sum(len(d)>=2 for _,d in self.nodes),
           'forks':sum(v>=2 for v in self.succ.values()),
           'external_inputs':len(self.ext),
-          'unconsumed_defs':sum(1 for i,_ in enumerate(self.nodes) if i not in self.used),
+          'unconsumed_defs':sum(1 for i,_ in enumerate(self.nodes) if self.defines[i] and i not in self.used),
           'mul_ops':self.mul,
           'signature':json.dumps(self.nodes,separators=(',',':'))}
 
@@ -59,9 +60,9 @@ for p in paths:
 assert len(pairs)==19 and all(v=={'2','3'} for v in pairs.values()),pairs
 
 os.makedirs('embench-results/gt_capacity',exist_ok=True)
-audit=[];aggregate=collections.Counter();opfreq=collections.Counter()
+audit=[];aggregate=collections.Counter();bench_aggregate=collections.Counter();descriptor_aggregate=collections.Counter();opfreq=collections.Counter()
 for ti,path in enumerate(paths,1):
-    name=os.path.basename(path).replace('.trace.csv','');opt=name.rsplit('_',1)[1]
+    name=os.path.basename(path).replace('.trace.csv','');benchmark,opt=name.rsplit('_',1)
     keys=[(D,C) for D in DEPTHS for C in CAPS]
     groups={k:Group(*k) for k in keys};outs={};stats={k:[0,0,0,0] for k in keys} # regions,groups,ops,max
     try:
@@ -73,11 +74,15 @@ for ti,path in enumerate(paths,1):
             if g.empty():return
             row=g.row();outs[k][1].writerow(row);st=stats[k]
             st[1]+=1;st[2]+=row['ops'];st[3]=max(st[3],row['ops'])
-            aggregate[(opt,k[0],k[1],row['signature'])]+=1;g.reset()
+            aggregate[(opt,k[0],k[1],row['signature'])]+=1
+            bench_aggregate[(benchmark,opt,k[0],k[1],row['signature'])]+=1
+            descriptor_aggregate[(benchmark,opt,k[0],k[1],row['ops'],row['depth'],row['max_width'],row['joins'],row['forks'],row['external_inputs'],row['unconsumed_defs'],row['mul_ops'])]+=1
+            g.reset()
         in_region=False
         with open(path,newline='') as f:
             for r in csv.DictReader(f):
                 op=r['op'].lower();args=[x.strip() for x in r['args'].split(',') if x.strip()]
+                opfreq[(name,op,1 if op in ELIGIBLE else 0)]+=1
                 o=operands(op,args) if op in ELIGIBLE else None
                 if o is None:
                     for k in keys:flush(k)
@@ -85,7 +90,7 @@ for ti,path in enumerate(paths,1):
                 if not in_region:
                     for k in keys:stats[k][0]+=1
                     in_region=True
-                opfreq[(name,op)]+=1;dst,src=o
+                dst,src=o
                 for k in keys:
                     g=groups[k];deps,dep=g.prospective(src)
                     if not g.empty() and not g.can_add(dep):
@@ -104,8 +109,14 @@ with open('embench-results/gt_capacity_signature_counts.csv','w',newline='') as 
     w=csv.writer(f);w.writerow(['opt','D','C','signature','occurrences'])
     for (opt,D,C,sig),n in sorted(aggregate.items(),key=lambda x:(x[0][0],x[0][1],x[0][2],-x[1])):
         w.writerow([opt,D,C,sig,n])
+with open('embench-results/gt_capacity_benchmark_signature_counts.csv','w',newline='') as f:
+    w=csv.writer(f);w.writerow(['benchmark','opt','D','C','signature','occurrences'])
+    for k,n in sorted(bench_aggregate.items(),key=lambda x:(x[0][0],x[0][1],x[0][2],x[0][3],-x[1])):w.writerow([*k,n])
+with open('embench-results/gt_capacity_descriptor_counts.csv','w',newline='') as f:
+    w=csv.writer(f);w.writerow(['benchmark','opt','D','C','ops','depth','max_width','joins','forks','external_inputs','unconsumed_defs','mul_ops','occurrences'])
+    for k,n in sorted(descriptor_aggregate.items()):w.writerow([*k,n])
 with open('embench-results/gt_operation_coverage.csv','w',newline='') as f:
-    w=csv.writer(f);w.writerow(['trace','op','occurrences'])
+    w=csv.writer(f);w.writerow(['trace','op','eligible_alu','occurrences'])
     for k,n in sorted(opfreq.items()):w.writerow([*k,n])
 
 print('GTC_AUDIT_START')

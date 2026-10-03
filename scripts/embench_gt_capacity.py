@@ -131,6 +131,34 @@ with open('embench-results/gt_pe_evidence.csv','w',newline='') as f:
         a[0]+=n;a[1]+=n*ops;a[2].add(benchmark)
     for k,(groups,dynops,benches) in sorted(acc.items()):w.writerow([*k,groups,dynops,len(benches)])
 
+
+# Step 3: compact structural family evidence for PE derivation.
+# Family labels are descriptive structural classes, not final PE choices.
+def pe_family(ops,depth,max_width,joins,forks,mul_ops):
+    if ops == 1:
+        return 'single_mul' if mul_ops else 'single_alu'
+    if depth == 1:
+        if mul_ops: return 'parallel_with_mul'
+        return 'parallel_independent'
+    if joins and forks: base='chain_join_fork'
+    elif joins: base='convergence'
+    elif forks: base='fork'
+    else: base='chain'
+    if depth >= 3: base += '_d3plus'
+    elif depth == 2: base += '_d2'
+    if mul_ops: base += '_mul'
+    return base
+
+fam=collections.defaultdict(lambda:[0,0,set()])
+for k,n in descriptor_aggregate.items():
+    benchmark,opt,D,C,ops,depth,max_width,joins,forks,external_inputs,unconsumed_defs,mul_ops=k
+    family=pe_family(ops,depth,max_width,joins,forks,mul_ops)
+    a=fam[(opt,D,C,family)];a[0]+=n;a[1]+=n*ops;a[2].add(benchmark)
+with open('embench-results/gt_pe_family_summary.csv','w',newline='') as f:
+    w=csv.writer(f);w.writerow(['opt','D','C','family','groups','dynamic_ops','benchmarks'])
+    for k,(groups,dynops,benches) in sorted(fam.items()):
+        w.writerow([*k,groups,dynops,len(benches)])
+
 print('GTC_AUDIT_START')
 for D in DEPTHS:
   for C in CAPS:

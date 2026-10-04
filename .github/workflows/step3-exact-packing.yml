@@ -1,4 +1,4 @@
-name: ATHENA Step 3 exact signature packing
+name: ATHENA Step 3 exact signature packing # paired marginal rerun
 on:
   workflow_dispatch:
   push:

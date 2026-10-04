@@ -1,0 +1,33 @@
+name: ATHENA Step 3 exact signature packing
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/step3_exact_signature_packing.py'
+      - '.github/workflows/step3-exact-packing.yml'
+permissions: {actions: read, contents: read}
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: athena}
+      - name: Restore validated signatures
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          mkdir restored && cd restored
+          gh run download 37145305760 --repo ivanssilva/NovaATHENA --name athena-embench-gt-capacity-summary
+          SIG="$(find . -type f -name gt_capacity_benchmark_signature_counts.csv -print -quit)"
+          test -n "$SIG"
+          cp "$SIG" ../athena/
+      - name: Exact signature packing
+        working-directory: athena
+        run: python3 scripts/step3_exact_signature_packing.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step3-exact-signature-packing
+          path: |
+            athena/step3_exact_signature_packing.csv
+            athena/step3_exact_signature_packing.md

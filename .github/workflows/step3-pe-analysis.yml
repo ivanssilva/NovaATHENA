@@ -22,8 +22,12 @@ jobs:
         run: |
           mkdir restored && cd restored
           gh run download 37145305760 --repo ivanssilva/NovaATHENA --name athena-embench-gt-capacity-summary
-          cp gt_capacity_descriptor_counts.csv ../athena/
-          cp EMBENCH_REVISION.txt ../athena/
+          find . -maxdepth 3 -type f -print
+          DESC="$(find . -type f -name gt_capacity_descriptor_counts.csv -print -quit)"
+          REV="$(find . -type f -name EMBENCH_REVISION.txt -print -quit)"
+          test -n "$DESC" && test -n "$REV"
+          cp "$DESC" ../athena/gt_capacity_descriptor_counts.csv
+          cp "$REV" ../athena/EMBENCH_REVISION.txt
       - name: Analyze benchmark-balanced PE evidence
         working-directory: athena
         run: python3 scripts/step3_pe_benchmark_analysis.py

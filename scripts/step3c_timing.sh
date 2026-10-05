@@ -6,13 +6,15 @@ for TOP in athena_pe_alu athena_pe_c2; do
   yosys -Q -T -l "reports/step3c/$TOP.log" -p "read_verilog rtl/athena_alu32.v rtl/step3c_pe.v; hierarchy -check -top $TOP; synth -top $TOP -flatten; dfflibmap -liberty $LIB; abc -liberty $LIB; clean; stat -liberty $LIB; write_verilog -noattr reports/step3c/$TOP.mapped.v"
 done
 # Use OpenSTA if available to measure combinational input-to-output critical delay.
+rm -rf opensta-src cudd-3.0.0
 git clone --depth 1 --recursive https://github.com/The-OpenROAD-Project/OpenSTA.git opensta-src
-cd opensta-src
-git submodule update --init --recursive
-mkdir build && cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-make -j2
-cd ../..
+curl -L -o cudd-3.0.0.tar.gz https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz
+tar -xzf cudd-3.0.0.tar.gz
+rm cudd-3.0.0.tar.gz
+(cd cudd-3.0.0 && ./configure && make -j2)
+cmake -S opensta-src -B opensta-src/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DCUDD_DIR="$PWD/cudd-3.0.0" -DFLEX_INCLUDE_DIR=/usr/include
+cmake --build opensta-src/build -j2
+test -x opensta-src/build/sta
 python3 - <<'PY'
 from pathlib import Path
 for top in ('athena_pe_alu','athena_pe_c2'):

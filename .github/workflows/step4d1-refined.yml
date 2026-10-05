@@ -1,0 +1,38 @@
+name: ATHENA Step 4D.1 refined live IO
+on:
+  push:
+    paths:
+      - 'scripts/step4d1_refined.py'
+      - '.github/workflows/step4d1-refined.yml'
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - name: Restore validated traces
+        run: |
+          mkdir -p embench-results
+          find source -type f -name '*.trace.csv' -exec cp {} embench-results/ \;
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Refined live IO and CDF analysis
+        run: |
+          python3 -u scripts/step4d1_refined.py | tee step4d1_refined.log
+          grep -q 'STEP4D1R_AUDIT traces 38 pairs 38' step4d1_refined.log
+          grep -q 'STEP4D1R_CDF O2 liveins' step4d1_refined.log
+          grep -q 'STEP4D1R_CDF O3 liveouts' step4d1_refined.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step4d1-refined
+          path: |
+            step4d1_refined_counts.csv
+            step4d1_unknown_semantics.csv
+            step4d1_refined.log

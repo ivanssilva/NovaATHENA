@@ -1,4 +1,4 @@
-name: ATHENA Step 3 exact signature packing # finite C2 multiplicity run
+name: ATHENA Step 3 exact signature packing # paired C2 marginal run
 on:
   workflow_dispatch:
   push:

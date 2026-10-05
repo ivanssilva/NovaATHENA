@@ -1,0 +1,32 @@
+name: ATHENA Step 4C.1 robustness and cost
+on:
+  push:
+    paths:
+      - 'scripts/step4c1_robustness_cost.py'
+      - '.github/workflows/step4c1-robustness-cost.yml'
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore validated exact signatures
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 37145305760
+          name: athena-embench-gt-capacity-summary
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: input
+      - name: Audit sparse topology robustness
+        run: |
+          set -euo pipefail
+          src="$(find input -type f -name gt_capacity_benchmark_signature_counts.csv -print -quit)"
+          test -n "$src"
+          cp "$src" gt_capacity_benchmark_signature_counts.csv
+          python3 scripts/step4c1_robustness_cost.py | tee step4c1_robustness_cost.log
+          grep -q 'STEP4C1_AUDIT pairs 38' step4c1_robustness_cost.log
+          grep -q 'STEP4C1_LIMITATION' step4c1_robustness_cost.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step4c1-robustness-cost
+          path: step4c1_robustness_cost.log

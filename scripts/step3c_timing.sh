@@ -34,7 +34,6 @@ read_liberty $LIB
 read_verilog reports/step3c/$TOP.mapped.v
 link_design $TOP
 report_checks -unconstrained -from [all_inputs] -to [all_outputs] -path_delay max -digits 4
-report_design_area
 EOF
   opensta-src/build/sta "reports/step3c/$TOP.tcl" | tee "reports/step3c/$TOP.sta.txt"
 done

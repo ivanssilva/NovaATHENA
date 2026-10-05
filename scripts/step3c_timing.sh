@@ -12,7 +12,31 @@ curl -L -o cudd-3.0.0.tar.gz https://raw.githubusercontent.com/davidkebo/cudd/ma
 tar -xzf cudd-3.0.0.tar.gz
 rm cudd-3.0.0.tar.gz
 (cd cudd-3.0.0 && ./configure && make -j2)
-cmake -S opensta-src -B opensta-src/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DCUDD_DIR="$PWD/cudd-3.0.0" -DFLEX_INCLUDE_DIR=/usr/include
+FLEX_HEADER="$(dpkg -L libfl-dev | grep -m1 '/FlexLexer.h
+cmake --build opensta-src/build -j2
+test -x opensta-src/build/sta
+python3 - <<'PY'
+from pathlib import Path
+for top in ('athena_pe_alu','athena_pe_c2'):
+    p=Path(f'reports/step3c/{top}.sdc')
+    p.write_text('set_input_delay 0 [all_inputs]\\nset_output_delay 0 [all_outputs]\\n')
+PY
+for TOP in athena_pe_alu athena_pe_c2; do
+cat > "reports/step3c/$TOP.tcl" <<EOF
+read_liberty $LIB
+read_verilog reports/step3c/$TOP.mapped.v
+link_design $TOP
+read_sdc reports/step3c/$TOP.sdc
+report_checks -path_delay max -digits 4
+report_design_area
+EOF
+  opensta-src/build/sta "reports/step3c/$TOP.tcl" | tee "reports/step3c/$TOP.sta.txt"
+done
+)"
+test -n "$FLEX_HEADER"
+FLEX_INCLUDE_DIR="$(dirname "$FLEX_HEADER")"
+echo "FlexLexer.h: $FLEX_HEADER"
+cmake -S opensta-src -B opensta-src/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DCUDD_DIR="$PWD/cudd-3.0.0" -DFLEX_INCLUDE_DIR="$FLEX_INCLUDE_DIR"
 cmake --build opensta-src/build -j2
 test -x opensta-src/build/sta
 python3 - <<'PY'

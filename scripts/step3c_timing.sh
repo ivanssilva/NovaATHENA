@@ -28,21 +28,12 @@ cmake -S opensta-src -B opensta-src/build \
 cmake --build opensta-src/build -j2
 test -x opensta-src/build/sta
 
-python3 - <<'PY'
-from pathlib import Path
-for top in ('athena_pe_alu', 'athena_pe_c2'):
-    p = Path(f'reports/step3c/{top}.sdc')
-    p.write_text('set_false_path -from [all_inputs] -to [all_outputs]\\n')
-PY
-
 for TOP in athena_pe_alu athena_pe_c2; do
 cat > "reports/step3c/$TOP.tcl" <<EOF
 read_liberty $LIB
 read_verilog reports/step3c/$TOP.mapped.v
 link_design $TOP
-read_sdc reports/step3c/$TOP.sdc
-reset_path -from [all_inputs] -to [all_outputs]
-report_checks -from [all_inputs] -to [all_outputs] -path_delay max -digits 4
+report_checks -unconstrained -from [all_inputs] -to [all_outputs] -path_delay max -digits 4
 report_design_area
 EOF
   opensta-src/build/sta "reports/step3c/$TOP.tcl" | tee "reports/step3c/$TOP.sta.txt"

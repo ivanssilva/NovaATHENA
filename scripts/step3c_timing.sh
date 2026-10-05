@@ -6,8 +6,7 @@ for TOP in athena_pe_alu athena_pe_c2; do
   yosys -Q -T -l "reports/step3c/$TOP.log" -p "read_verilog rtl/athena_alu32.v rtl/step3c_pe.v; hierarchy -check -top $TOP; synth -top $TOP -flatten; dfflibmap -liberty $LIB; abc -liberty $LIB; clean; stat -liberty $LIB; write_verilog -noattr reports/step3c/$TOP.mapped.v"
 done
 # Use OpenSTA if available to measure combinational input-to-output critical delay.
-sudo apt-get update -qq
-sudo apt-get install -y opensta
+git clone --depth 1 https://github.com/The-OpenROAD-Project/OpenSTA.git opensta-src\ncd opensta-src\ngit submodule update --init --recursive\nmkdir build && cd build\ncmake .. -DCMAKE_BUILD_TYPE=Release\nmake -j2\nsudo make install\ncd ../..
 python3 - <<'PY'
 from pathlib import Path
 for top in ('athena_pe_alu','athena_pe_c2'):

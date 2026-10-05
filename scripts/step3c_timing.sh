@@ -32,7 +32,7 @@ python3 - <<'PY'
 from pathlib import Path
 for top in ('athena_pe_alu', 'athena_pe_c2'):
     p = Path(f'reports/step3c/{top}.sdc')
-    p.write_text('set_input_delay 0 [all_inputs]\\nset_output_delay 0 [all_outputs]\\n')
+    p.write_text('set_false_path -from [all_inputs] -to [all_outputs]\\n')
 PY
 
 for TOP in athena_pe_alu athena_pe_c2; do
@@ -41,7 +41,8 @@ read_liberty $LIB
 read_verilog reports/step3c/$TOP.mapped.v
 link_design $TOP
 read_sdc reports/step3c/$TOP.sdc
-report_checks -path_delay max -digits 4
+reset_path -from [all_inputs] -to [all_outputs]
+report_checks -from [all_inputs] -to [all_outputs] -path_delay max -digits 4
 report_design_area
 EOF
   opensta-src/build/sta "reports/step3c/$TOP.tcl" | tee "reports/step3c/$TOP.sta.txt"

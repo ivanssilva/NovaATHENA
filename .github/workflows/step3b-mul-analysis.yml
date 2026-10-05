@@ -18,7 +18,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ivanssilva/NovaATHENA
           run-id: 37145305760
-          name: athena-step3-pe-families
+          name: athena-embench-gt-capacity-summary
           path: restored
       - name: Analyze MUL
         shell: bash

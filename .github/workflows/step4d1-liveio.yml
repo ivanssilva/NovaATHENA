@@ -1,0 +1,36 @@
+name: ATHENA Step 4D.1 true live-ins live-outs
+on:
+  push:
+    paths:
+      - 'scripts/step4d1_liveio.py'
+      - '.github/workflows/step4d1-liveio.yml'
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - name: Restore traces
+        run: |
+          mkdir -p embench-results
+          find source -type f -name '*.trace.csv' -exec cp {} embench-results/ \;
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Analyze true live IO
+        run: |
+          python3 -u scripts/step4d1_liveio.py | tee step4d1_liveio.log
+          grep -q 'STEP4D1_AUDIT traces 38 pairs 38' step4d1_liveio.log
+          grep -q 'STEP4D1_LIMITATION' step4d1_liveio.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step4d1-liveio
+          path: |
+            step4d1_liveio_counts.csv
+            step4d1_liveio.log

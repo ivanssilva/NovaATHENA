@@ -63,20 +63,19 @@ for pi,p in enumerate(paths,1):
   live.difference_update(d);live.update(u)
   known=(op in RR or op in RI or op in {'lui','auipc','lb','lh','lw','lbu','lhu','sb','sh','sw','beq','bne','blt','bge','bltu','bgeu','jal','jalr','ecall','ebreak','fence','fence.i','nop'})
   if not known:unknown[(op,tuple(a))]+=1
- g=G();ng=0
+ g=G();ng=[0]
  def flush():
-  nonlocal ng
   if not g.nodes:return
   last={}
   for reg,i in g.defs:last[reg]=i
-  lo=sum(deflive[i] for i in last.values());agg[(b,o,len(g.nodes),len(g.ext),lo)]+=1;ng+=1;g.reset()
+  lo=sum(deflive[i] for i in last.values());agg[(b,o,len(g.nodes),len(g.ext),lo)]+=1;ng[0]+=1;g.reset()
  for i,(op,a) in enumerate(rows):
   q=elig(op,a)
   if q is None:flush();continue
   dst,src=q;ds,d=g.prospective(src)
   if g.nodes and (len(g.nodes)>=C or d>D):flush();ds,d=g.prospective(src)
   g.add(op,dst,src,ds,d,i)
- flush();print('STEP4D1R_TRACE',pi,'/',38,name,'groups',ng,flush=True)
+ flush();print('STEP4D1R_TRACE',pi,'/',38,name,'groups',ng[0],flush=True)
 with open('step4d1_refined_counts.csv','w',newline='') as f:
  w=csv.writer(f);w.writerow(['benchmark','opt','ops','true_liveins','true_liveouts','occurrences'])
  for k,v in sorted(agg.items()):w.writerow([*k,v])

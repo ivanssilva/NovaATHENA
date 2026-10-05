@@ -1,4 +1,4 @@
-name: ATHENA Step 3B MUL analysis
+name: ATHENA Step 3B MUL analysis # corrected artifact
 on:
   push:
     paths:

@@ -1,0 +1,34 @@
+name: ATHENA Step 4B topology mapping
+on:
+  push:
+    paths:
+      - 'scripts/step4b_topology_mapping.py'
+      - '.github/workflows/step4b-topology-mapping.yml'
+  workflow_dispatch:
+jobs:
+  map:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore validated exact signatures
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 37145305760
+          name: athena-embench-gt-capacity-summary
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: input
+      - name: Evaluate nested topology capabilities
+        run: |
+          set -euo pipefail
+          src="$(find input -type f -name gt_capacity_benchmark_signature_counts.csv -print -quit)"
+          test -n "$src"
+          cp "$src" gt_capacity_benchmark_signature_counts.csv
+          python3 scripts/step4b_topology_mapping.py | tee step4b_topology_mapping.log
+          grep -q 'STEP4B_AUDIT benchmark_opt_pairs 38' step4b_topology_mapping.log
+          grep -q 'STEP4B_LIMITATION' step4b_topology_mapping.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step4b-topology-mapping
+          path: |
+            step4b_topology_mapping.csv
+            step4b_topology_mapping.log

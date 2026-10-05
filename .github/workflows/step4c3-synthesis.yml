@@ -9,30 +9,21 @@ on:
 jobs:
   synth:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Install tools
+      - name: Fetch Nangate45 Liberty
         run: |
-          sudo apt-get update
-          sudo apt-get install -y yosys
-          git clone --depth 1 https://github.com/The-OpenROAD-Project/OpenSTA.git
-          sudo apt-get install -y cmake build-essential tcl-dev swig bison flex libfl-dev libeigen3-dev
-          git clone --depth 1 --branch 3.0.0 https://github.com/ivmai/cudd.git
-          cd cudd && ./configure --prefix=/usr/local && make -j2 && sudo make install && cd ..
-          cd OpenSTA && mkdir build && cd build && cmake .. && make -j2 && sudo make install
-      - name: Get Nangate45 liberty
-        run: |
-          git clone --depth 1 https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git orfs
-          LIB="$(find orfs -name NangateOpenCellLibrary_typical.lib -print -quit)"
-          test -n "$LIB"
-          echo "LIB=$LIB" >> "$GITHUB_ENV"
-      - name: Synthesize K4 K5 K6
-        run: |
-          chmod +x scripts/step4c3_synthesis.sh
-          scripts/step4c3_synthesis.sh "$LIB" | tee step4c3_out/summary.log
-          test "$(grep -c STEP4C3_RESULT step4c3_out/summary.log)" -eq 3
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git orfs
+          cd orfs
+          git sparse-checkout set flow/platforms/nangate45/lib
+          test -s flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib
+      - name: Install synthesis tools
+        run: sudo apt-get update && sudo apt-get install -y yosys cmake build-essential swig bison flex libfl-dev libeigen3-dev libboost-all-dev tcl-dev zlib1g-dev libgtest-dev
+      - name: Synthesize and time K4 K5 K6
+        run: bash scripts/step4c3_synthesis.sh
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: athena-step4c3-synthesis
-          path: step4c3_out/
+          path: reports/step4c3/

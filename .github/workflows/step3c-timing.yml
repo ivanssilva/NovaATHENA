@@ -1,0 +1,29 @@
+name: ATHENA Step 3C PE timing feasibility
+on:
+  push:
+    paths:
+      - 'rtl/step3c_pe.v'
+      - 'scripts/step3c_timing.sh'
+      - '.github/workflows/step3c-timing.yml'
+  workflow_dispatch:
+jobs:
+  timing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Nangate45 Liberty
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git orfs
+          cd orfs
+          git sparse-checkout set flow/platforms/nangate45/lib
+          test -s flow/platforms/nangate45/lib/NangateOpenCellLibrary_typical.lib
+      - name: Install synthesis tools
+        run: sudo apt-get update && sudo apt-get install -y yosys
+      - name: Synthesize and time PE-ALU vs PE-C2
+        run: bash scripts/step3c_timing.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step3c-pe-timing
+          path: reports/step3c/

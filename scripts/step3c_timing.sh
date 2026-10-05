@@ -17,9 +17,7 @@ python3 - <<'PY'
 from pathlib import Path
 for top in ('athena_pe_alu','athena_pe_c2'):
     p=Path(f'reports/step3c/{top}.sdc')
-    p.write_text('set_input_delay 0 [all_inputs]
-set_output_delay 0 [all_outputs]
-')
+    p.write_text('set_input_delay 0 [all_inputs]\\nset_output_delay 0 [all_outputs]\\n')
 PY
 for TOP in athena_pe_alu athena_pe_c2; do
 cat > "reports/step3c/$TOP.tcl" <<EOF

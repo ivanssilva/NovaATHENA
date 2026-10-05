@@ -94,3 +94,16 @@ for opt in ('O2','O3'):
 with open('step3_c2_finite_multiplicity_summary.csv','w',newline='') as f:
  w=csv.writer(f); w.writerow(['opt','K','median_absorbed_fraction','q1','q3']); w.writerows(summary)
 for r in summary: print('STEP3_C2K',*r)
+
+
+# Step 3A: paired benchmark-level marginal gain of each additional finite C2.
+paired=[]
+for opt in ('O2','O3'):
+ keys=[k for k in tot if k[1]==opt]
+ for k0,k1 in ((1,2),(2,3),(3,4)):
+  v=[(c2k[k1][k]-c2k[k0][k])/tot[k] for k in keys]
+  med,q1,q3=q(v)
+  paired.append([opt,f'{k0}->{k1}',med,q1,q3,sum(x>0 for x in v),max(v)])
+with open('step3_c2_paired_marginals.csv','w',newline='') as f:
+ w=csv.writer(f); w.writerow(['opt','transition','median_marginal','q1','q3','benchmarks_positive','max_marginal']); w.writerows(paired)
+for r in paired: print('STEP3_C2_PAIRED',*r)

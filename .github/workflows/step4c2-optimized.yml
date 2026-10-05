@@ -1,0 +1,34 @@
+name: ATHENA Step 4C.2 optimized Pareto search
+on:
+  push:
+    paths:
+      - 'scripts/step4c2_optimized.py'
+      - '.github/workflows/step4c2-optimized.yml'
+  workflow_dispatch:
+jobs:
+  search:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37145305760
+          name: athena-embench-gt-capacity-summary
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: input
+      - name: Optimized K4 K5 K6 Pareto search
+        run: |
+          set -euo pipefail
+          src="$(find input -type f -name gt_capacity_benchmark_signature_counts.csv -print -quit)"
+          test -n "$src"
+          cp "$src" gt_capacity_benchmark_signature_counts.csv
+          python3 -u scripts/step4c2_optimized.py | tee step4c2_optimized.log
+          grep -q 'STEP4C2O_AUDIT pairs 38' step4c2_optimized.log
+          grep -q 'STEP4C2O_LIMITATION' step4c2_optimized.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step4c2-optimized
+          path: |
+            step4c2_optimized_pareto.csv
+            step4c2_optimized.log

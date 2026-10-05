@@ -64,3 +64,33 @@ for opt in ('O2','O3'):
   p2=sum(v for (o,n),v in hist[lab].items() if o==opt and n>=2)/den
   p3=sum(v for (o,n),v in hist[lab].items() if o==opt and n>=3)/den
   print('STEP3_MULT',opt,lab,'mean',mean,'P>=2',p2,'P>=3',p3)
+
+
+# Finite C2 multiplicity: maximum absorbed operations with at most K non-overlapping C2 motifs.
+def best_c2_k(nodes,K):
+ cand=candidates(nodes,1,0); best_abs=0
+ def rec(pos,used,count,absorb):
+  nonlocal best_abs
+  if absorb>best_abs: best_abs=absorb
+  if count==K: return
+  for z in range(pos,len(cand)):
+   S,_=cand[z]
+   if not S&used: rec(z+1,used|S,count+1,absorb+2)
+ rec(0,frozenset(),0,0); return best_abs
+c2k={K:collections.Counter() for K in (1,2,3,4)}
+for r in rows:
+ k=(r['benchmark'],r['opt']); occ=int(r['occurrences']); nodes=json.loads(r['signature'])
+ for K in c2k: c2k[K][k]+=occ*best_c2_k(nodes,K)
+with open('step3_c2_finite_multiplicity.csv','w',newline='') as f:
+ w=csv.writer(f); w.writerow(['benchmark','opt','K','absorbed_ops','eligible_ops','absorbed_fraction'])
+ for k in sorted(tot):
+  for K in c2k: w.writerow([k[0],k[1],K,c2k[K][k],tot[k],c2k[K][k]/tot[k]])
+summary=[]
+for opt in ('O2','O3'):
+ keys=[k for k in tot if k[1]==opt]
+ for K in (1,2,3,4):
+  v=[c2k[K][k]/tot[k] for k in keys]; med,q1,q3=q(v)
+  summary.append([opt,K,med,q1,q3])
+with open('step3_c2_finite_multiplicity_summary.csv','w',newline='') as f:
+ w=csv.writer(f); w.writerow(['opt','K','median_absorbed_fraction','q1','q3']); w.writerows(summary)
+for r in summary: print('STEP3_C2K',*r)

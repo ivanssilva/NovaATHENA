@@ -1,0 +1,35 @@
+name: ATHENA Step 4C.2 Pareto topology search
+on:
+  push:
+    paths:
+      - 'scripts/step4c2_pareto_search.py'
+      - '.github/workflows/step4c2-pareto-search.yml'
+  workflow_dispatch:
+jobs:
+  search:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore validated exact signatures
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 37145305760
+          name: athena-embench-gt-capacity-summary
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: input
+      - name: Search K4 K5 K6 Pareto candidates
+        run: |
+          set -euo pipefail
+          src="$(find input -type f -name gt_capacity_benchmark_signature_counts.csv -print -quit)"
+          test -n "$src"
+          cp "$src" gt_capacity_benchmark_signature_counts.csv
+          python3 scripts/step4c2_pareto_search.py | tee step4c2_pareto_search.log
+          grep -q 'STEP4C2_AUDIT pairs 38' step4c2_pareto_search.log
+          grep -q 'STEP4C2_LIMITATION' step4c2_pareto_search.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step4c2-pareto-search
+          path: |
+            step4c2_pareto_search.csv
+            step4c2_pareto_search.log

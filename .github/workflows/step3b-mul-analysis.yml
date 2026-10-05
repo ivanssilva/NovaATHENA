@@ -1,4 +1,4 @@
-name: ATHENA Step 3B MUL analysis # corrected artifact
+name: ATHENA Step 3B MUL analysis # structural roles
 on:
   push:
     paths:

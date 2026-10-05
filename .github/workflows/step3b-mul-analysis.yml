@@ -1,0 +1,33 @@
+name: ATHENA Step 3B MUL analysis
+on:
+  push:
+    paths:
+      - 'scripts/step3b_mul_analysis.py'
+      - '.github/workflows/step3b-mul-analysis.yml'
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: athena
+      - name: Restore validated signatures
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ivanssilva/NovaATHENA
+          run-id: 37145305760
+          name: athena-step3-pe-families
+          path: restored
+      - name: Analyze MUL
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC="$(find restored -name gt_capacity_benchmark_signature_counts.csv -type f | head -1)"
+          test -n "$SRC"
+          python3 athena/scripts/step3b_mul_analysis.py "$SRC"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step3b-mul-analysis
+          path: step3b_mul_per_benchmark.csv

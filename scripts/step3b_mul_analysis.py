@@ -40,3 +40,16 @@ for opt in ('O2','O3'):
   num=sum(v for (k,c),v in mul_nodes_hist.items() if k in keys and c>=m)
   print('STEP3B_MUL_MULT',opt,'P_GT_MUL_GE',m,num/den)
 print('STEP3B_MUL_COMPLETE',len({k for k in tot}))
+
+
+# Aggregate MUL structural roles, benchmark-balanced and occurrence-weighted.
+for opt in ('O2','O3'):
+ keys=[k for k in tot if k[1]==opt]
+ for role in ('isolated','source','sink','internal'):
+  vals=[roles[(k,role)]/mul[k] if mul[k] else 0.0 for k in keys]
+  med,q1,q3=q(vals)
+  print('STEP3B_MUL_ROLE_BENCH',opt,role,med,q1,q3,sum(x>0 for x in vals))
+ denom=sum(mul[k] for k in keys)
+ for role in ('isolated','source','sink','internal'):
+  num=sum(roles[(k,role)] for k in keys)
+  print('STEP3B_MUL_ROLE_WEIGHTED',opt,role,(num/denom if denom else 0.0))

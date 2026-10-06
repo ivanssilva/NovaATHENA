@@ -3,7 +3,7 @@
 for the selected G_t(D=3,C=8) population. Structural evidence only.
 """
 import csv,glob,os,re,collections,statistics
-RR={'add','sub','and','or','xor','sll','srl','sra','slt','sltu','mul','mulh','mulhu','mulhsu'}
+RR={'add','sub','and','or','xor','sll','srl','sra','slt','sltu','mul','mulh','mulhu','mulhsu','div','divu','rem','remu'}
 RI={'addi','andi','ori','xori','slli','srli','srai','slti','sltiu'}
 EL=RR|RI;D=3;C=8
 ALIASES={'zero':'x0','ra':'x1','sp':'x2','gp':'x3','tp':'x4',
@@ -34,6 +34,18 @@ def usedef(op,a):
  if op=='jalr' and A:
   d=A[0] if REG.match(A[0]) else 'x1';u=set(regs(','.join(A[1:] if REG.match(A[0]) else A)))
   return u,({d} if d!='x0' else set())
+ if op=='mv' and len(A)>=2:return ({A[1]} if A[1]!='x0' else set()),({A[0]} if A[0]!='x0' else set())
+ if op in {'not','neg','snez','seqz'} and len(A)>=2:return ({A[1]} if A[1]!='x0' else set()),({A[0]} if A[0]!='x0' else set())
+ if op in {'bnez','beqz','bltz','bgez','blez','bgtz'} and A:return ({A[0]} if A[0]!='x0' else set()),set()
+ if op in {'bgt','ble','bgtu','bleu'} and len(A)>=2:return set(x for x in A[:2] if REG.match(x) and x!='x0'),set()
+ if op=='j':return set(),set()
+ if op=='ret':return {'x1'},set()
+ if op=='jr' and A:return ({A[0]} if A[0]!='x0' else set()),set()
+ if op=='csrrs' and A:
+  u=set()
+  if len(A)>=3 and REG.match(A[2]) and A[2]!='x0':u.add(A[2])
+  d={A[0]} if REG.match(A[0]) and A[0]!='x0' else set()
+  return u,d
  if op in {'ecall','ebreak','fence','fence.i','nop'}:return set(),set()
  # conservative fallback is explicit and audited
  return set(x for x in regs(','.join(A)) if x!='x0'),set()
@@ -61,7 +73,7 @@ for pi,p in enumerate(paths,1):
   q=elig(op,a)
   if q and q[0]!='x0':deflive[i]=q[0] in live
   live.difference_update(d);live.update(u)
-  known=(op in RR or op in RI or op in {'lui','auipc','lb','lh','lw','lbu','lhu','sb','sh','sw','beq','bne','blt','bge','bltu','bgeu','jal','jalr','ecall','ebreak','fence','fence.i','nop'})
+  known=(op in RR or op in RI or op in {'lui','auipc','lb','lh','lw','lbu','lhu','sb','sh','sw','beq','bne','blt','bge','bltu','bgeu','jal','jalr','mv','not','neg','snez','seqz','bnez','beqz','bltz','bgez','blez','bgtz','bgt','ble','bgtu','bleu','j','ret','jr','csrrs','ecall','ebreak','fence','fence.i','nop'})
   if not known:unknown[(op,tuple(a))]+=1
  g=G();ng=[0]
  def flush():

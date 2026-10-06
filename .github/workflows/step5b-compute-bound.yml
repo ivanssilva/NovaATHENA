@@ -1,0 +1,34 @@
+name: ATHENA Step 5B compute-only temporal contract
+on:
+  push:
+    paths:
+      - 'scripts/step5b_compute_bound.py'
+      - '.github/workflows/step5b-compute-bound.yml'
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - name: Restore immutable traces
+        run: |
+          mkdir -p embench-results
+          find source -type f -name '*.trace.csv' -exec cp {} embench-results/ \;
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Freeze and audit Step 5B contract
+        run: |
+          python3 scripts/step5b_compute_bound.py | tee step5b_compute_bound.log
+          grep -q 'STEP5B_AUDIT traces 38 pairs 38' step5b_compute_bound.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5b-compute-bound
+          path: |
+            step5b_compute_bound.log
+            step5b_trace_inputs.csv

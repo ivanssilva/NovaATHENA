@@ -1,0 +1,37 @@
+name: ATHENA Step 4D.3 joint structural capacity
+on:
+  push:
+    paths:
+      - 'scripts/step4d3_joint_capacity.py'
+      - '.github/workflows/step4d3-joint-capacity.yml'
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - name: Restore validated traces
+        run: |
+          mkdir -p embench-results
+          find source -type f -name '*.trace.csv' -exec cp {} embench-results/ \;
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Joint topology and interface capacity
+        run: |
+          python3 -u scripts/step4d3_joint_capacity.py | tee step4d3_joint_capacity.log
+          grep -q 'STEP4D3_AUDIT traces 38 pairs 38 unknown_occurrences 0 unknown_forms 0' step4d3_joint_capacity.log
+          grep -q 'STEP4D3_RESULT O2 in 5 out 4' step4d3_joint_capacity.log
+          grep -q 'STEP4D3_RESULT O3 in 6 out 4' step4d3_joint_capacity.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step4d3-joint-capacity
+          path: |
+            step4d3_joint_counts.csv
+            step4d3_joint_capacity.log

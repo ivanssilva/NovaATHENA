@@ -18,6 +18,6 @@ with open(out,'w',newline='') as f:
 extra=sum(max(0,len(v)-idx[k]) for k,v in by_pc.items())
 print('MEMMERGE matched',matched,'missing',missing,'extra',extra,'trace_memory_ops',matched+missing)
 for r in missing_rows: print('MEMMERGE_MISSING',r['seq'],r['pc'],r['op'],r['args'])
-ok_shutdown = missing==1 and missing_rows[0]['op'].lower() in {'sb','sh','sw'} and int(missing_rows[0]['seq']) >= len(rows)-3
+ok_shutdown = (missing==1 and missing_rows[0]['pc'].lower()=='0x8000003c' and missing_rows[0]['op'].lower()=='sw' and missing_rows[0]['args'].replace(' ','')=='t1,0(t0)')
 if ok_shutdown: print('MEMMERGE_EXCLUDED terminal_harness_store 1')
 if extra or (missing and not ok_shutdown): sys.exit(2)

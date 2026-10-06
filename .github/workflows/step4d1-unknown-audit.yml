@@ -1,0 +1,25 @@
+name: ATHENA Step 4D.1 unknown opcode audit
+on:
+  push:
+    paths:
+      - 'scripts/step4d1_unknown_audit.py'
+      - '.github/workflows/step4d1-unknown-audit.yml'
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37382231380
+          name: athena-step4d1-refined
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - run: |
+          cp source/step4d1_unknown_semantics.csv .
+          python3 scripts/step4d1_unknown_audit.py | tee step4d1_unknown_audit.log
+          grep -q 'STEP4D1A_AUDIT' step4d1_unknown_audit.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step4d1-unknown-audit
+          path: step4d1_unknown_audit.log

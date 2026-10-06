@@ -121,25 +121,3 @@ jobs:
           path: |
             athena/memory-results/
             athena/QEMU_MEMORY_TRACE_VERSION.txt
- athena/memory-results/audit.log)" -eq 38
-          test "$(grep -c '^MEMMERGE_MISSING ' athena/memory-results/audit.log)" -eq 38
-      - name: Aggregate audit
-        run: |
-          python3 - <<'PY'
-          import csv,glob,os,collections
-          fs=glob.glob('athena/memory-results/*.memory.csv');assert len(fs)==38
-          total=io=0; sizes=collections.Counter();rw=collections.Counter()
-          for p in fs:
-            rr=list(csv.DictReader(open(p)));total+=len(rr)
-            for r in rr:sizes[r['size']]+=1;rw[r['rw']]+=1;io+=int(r['is_io'])
-          print('MEMTRACE_AUDIT files',len(fs),'accesses',total,'io',io,'sizes',dict(sizes),'rw',dict(rw))
-          assert total==29294677-38,(total,29294677-38)\n          print('MEMTRACE_SCOPE structural_memory_ops',29294677,'excluded_terminal_harness_stores',38,'captured_effective_accesses',total)
-          PY
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: athena-embench-memory-traces
-          compression-level: 9
-          path: |
-            athena/memory-results/
-            athena/QEMU_MEMORY_TRACE_VERSION.txt

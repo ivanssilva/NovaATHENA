@@ -96,7 +96,7 @@ jobs:
             done
           done
           test "$(find athena/memory-results -name '*.memory.csv' | wc -l)" -eq 38
-          test "$(grep -c 'MEMMERGE' athena/memory-results/audit.log)" -eq 38
+          test "$(grep -c '^MEMMERGE matched' athena/memory-results/audit.log)" -eq 38
           test "$(grep -c 'missing 1 extra 0' athena/memory-results/audit.log)" -eq 38\n          test "$(grep -c 'MEMMERGE_EXCLUDED terminal_harness_store 1' athena/memory-results/audit.log)" -eq 38\n          test "$(grep -c 'MEMMERGE_MISSING' athena/memory-results/audit.log)" -eq 38
       - name: Aggregate audit
         run: |

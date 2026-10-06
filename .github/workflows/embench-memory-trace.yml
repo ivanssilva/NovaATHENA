@@ -1,0 +1,120 @@
+name: ATHENA Embench enriched memory traces
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/memtrace.c'
+      - 'scripts/merge_memory_trace.py'
+      - '.github/workflows/embench-memory-trace.yml'
+jobs:
+  enrich:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with: {path: athena}
+      - uses: actions/checkout@v4
+        with:
+          repository: embench/embench-iot
+          ref: 09c2ed8c3b7008c95d08b038de4a3f6dc103ed70
+          path: embench
+      - name: Install RV32 tools and QEMU plugin build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf picolibc-riscv64-unknown-elf qemu-system-misc libglib2.0-dev
+          qemu-system-riscv32 --version | tee athena/QEMU_MEMORY_TRACE_VERSION.txt
+          qemu-system-riscv32 -plugin help >/tmp/plugin-help.txt 2>&1 || true
+          cat /tmp/plugin-help.txt
+      - name: Obtain matching QEMU plugin header and build plugin
+        run: |
+          QVER=$(qemu-system-riscv32 --version | head -1 | sed -E 's/.*version ([0-9]+\.[0-9]+).*/\1/')
+          echo "QEMU major.minor=$QVER"
+          wget -q "https://raw.githubusercontent.com/qemu/qemu/v${QVER}.0/include/qemu/qemu-plugin.h" -O /tmp/qemu-plugin.h || wget -q "https://raw.githubusercontent.com/qemu/qemu/stable-${QVER}/include/qemu/qemu-plugin.h" -O /tmp/qemu-plugin.h
+          gcc -O2 -fPIC -shared -I/tmp $(pkg-config --cflags glib-2.0) athena/plugins/memtrace.c -o athena/memtrace.so
+      - name: Create controlled RV32 bare-metal runtime
+        run: |
+          cat > startup.S <<'EOF'
+          .section .text.start
+          .globl _start
+          _start:
+            la sp, __stack_top
+            la t0, __bss_start
+            la t1, __bss_end
+          1: bgeu t0, t1, 2f
+            sw zero, 0(t0)
+            addi t0, t0, 4
+            j 1b
+          2: call main
+            li t0, 0x100000
+            beqz a0, 3f
+            li t1, 0x3333
+            sw t1, 0(t0)
+          4: j 4b
+          3: li t1, 0x5555
+            sw t1, 0(t0)
+          5: j 5b
+          EOF
+          cat > qemu-virt-rv32.ld <<'EOF'
+          ENTRY(_start)
+          MEMORY { ram (rwx) : ORIGIN = 0x80000000, LENGTH = 16M }
+          SECTIONS {
+            . = ORIGIN(ram); .text : { KEEP(*(.text.start)) *(.text .text.*) } > ram
+            .rodata : { *(.rodata .rodata.*) *(.srodata .srodata.*) } > ram
+            .data : { *(.data .data.*) *(.sdata .sdata.*) } > ram
+            .bss (NOLOAD) : { __bss_start = .; *(.bss .bss.*) *(.sbss .sbss.*) *(COMMON); __bss_end = .; } > ram
+            . = ALIGN(16); . = ORIGIN(ram) + LENGTH(ram); __stack_top = .;
+          }
+          EOF
+          cat > runner.c <<'EOF'
+          extern void initialise_benchmark(void); extern int benchmark(void); extern int verify_benchmark(int);
+          int main(void){initialise_benchmark();int r=benchmark();return verify_benchmark(r)==0?0:1;}
+          EOF
+      - name: Download immutable structural traces for seq/PC correlation
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - name: Regenerate same binaries and capture effective memory addresses
+        run: |
+          mkdir -p athena/memory-results
+          for DIR in embench/src/*; do
+            BENCH=$(basename "$DIR")
+            for OPT in 2 3; do
+              NAME="${BENCH}_O${OPT}"
+              ELF="athena/memory-results/${NAME}.elf"
+              RAW="athena/memory-results/${NAME}.memory.raw.csv"
+              OUT="athena/memory-results/${NAME}.memory.csv"
+              riscv64-unknown-elf-gcc --specs=/usr/lib/picolibc/riscv64-unknown-elf/picolibc.specs -nostartfiles -march=rv32im -mabi=ilp32 -O"$OPT" -fno-builtin -Iembench/support -DWARMUP_HEAT=0 -DGLOBAL_SCALE_FACTOR=1 startup.S runner.c "$DIR"/*.c embench/support/beebsc.c -T qemu-virt-rv32.ld -lm -o "$ELF"
+              timeout 60s qemu-system-riscv32 -M virt -m 16M -nographic -bios none -kernel "$ELF" -plugin "athena/memtrace.so,out=$RAW" >/dev/null 2>&1 || true
+              TRACE=$(find structural -type f -name "${NAME}.trace.csv" | head -1)
+              test -n "$TRACE"
+              python3 athena/scripts/merge_memory_trace.py "$TRACE" "$RAW" "$OUT" | tee -a athena/memory-results/audit.log
+              rm -f "$ELF" "$RAW"
+            done
+          done
+          test "$(find athena/memory-results -name '*.memory.csv' | wc -l)" -eq 38
+          test "$(grep -c 'MEMMERGE' athena/memory-results/audit.log)" -eq 38
+          test "$(grep -c 'missing 0 extra 0' athena/memory-results/audit.log)" -eq 38
+      - name: Aggregate audit
+        run: |
+          python3 - <<'PY'
+          import csv,glob,os,collections
+          fs=glob.glob('athena/memory-results/*.memory.csv');assert len(fs)==38
+          total=io=0; sizes=collections.Counter();rw=collections.Counter()
+          for p in fs:
+            rr=list(csv.DictReader(open(p)));total+=len(rr)
+            for r in rr:sizes[r['size']]+=1;rw[r['rw']]+=1;io+=int(r['is_io'])
+          print('MEMTRACE_AUDIT files',len(fs),'accesses',total,'io',io,'sizes',dict(sizes),'rw',dict(rw))
+          assert total==29294677,(total,29294677)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-embench-memory-traces
+          compression-level: 9
+          path: |
+            athena/memory-results/
+            athena/QEMU_MEMORY_TRACE_VERSION.txt

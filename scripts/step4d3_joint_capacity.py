@@ -4,7 +4,7 @@ Definitive G_t(D=3,C=8) semantics: DIV/REM known but ineligible.
 Tests the K5 sparse non-MUL backbone jointly with 5-in/4-out base interface
 and 6-in/4-out sensitivity. MUL-containing groups are reported separately
 because the shared pipelined multiplier is temporal (L=6--8, II=1), not a
-same-cycle combinational slot. Structural evidence only; not speedup.
+same-cycle combinational slot. Structural evidence only; not speedup. DIV/REM remain recognized liveness barriers.
 """
 import csv,glob,os,re,collections,statistics,json
 RR={'add','sub','and','or','xor','sll','srl','sra','slt','sltu','mul','mulh','mulhu','mulhsu'}

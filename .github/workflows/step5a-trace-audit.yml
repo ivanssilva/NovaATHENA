@@ -1,0 +1,35 @@
+name: ATHENA Step 5A temporal trace audit
+on:
+  push:
+    paths:
+      - 'scripts/step5a_trace_audit.py'
+      - '.github/workflows/step5a-trace-audit.yml'
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - name: Restore validated traces
+        run: |
+          mkdir -p embench-results
+          find source -type f -name '*.trace.csv' -exec cp {} embench-results/ \;
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Audit temporal fields
+        run: |
+          python3 -u scripts/step5a_trace_audit.py | tee step5a_trace_audit.log
+          grep -q 'STEP5A_AUDIT traces 38 pairs 38 schemas 1 bad_seq 0 bad_pc 0 bad_tb_start 0' step5a_trace_audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5a-trace-audit
+          path: |
+            step5a_trace_audit.csv
+            step5a_trace_audit.log

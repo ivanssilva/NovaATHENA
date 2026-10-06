@@ -1,0 +1,21 @@
+name: ATHENA Step 5B C2 timing contract
+on:
+  push:
+    paths:
+      - 'scripts/step5b_c2_timing_contract.py'
+      - '.github/workflows/step5b-c2-timing-contract.yml'
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Derive timing break-even contract
+        run: |
+          python3 scripts/step5b_c2_timing_contract.py | tee step5b_c2_timing_contract.log
+          grep -q 'STEP5B_DECISION' step5b_c2_timing_contract.log
+          grep -q 'STEP5B_CAUTION' step5b_c2_timing_contract.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step5b-c2-timing-contract
+          path: step5b_c2_timing_contract.log

@@ -5,7 +5,7 @@ with open(trace,newline='') as f: rows=list(csv.DictReader(f))
 by_pc=collections.defaultdict(list)
 with open(mem,newline='') as f:
  for r in csv.DictReader(f):by_pc[int(r['pc'],16)].append(r)
-# Pair dynamic memory events to dynamic architectural memory instructions by PC occurrence order.
+# Pair validated dynamic memory events to dynamic architectural memory instructions by PC occurrence order.
 idx=collections.Counter(); matched=0; missing=0
 with open(out,'w',newline='') as f:
  w=csv.writer(f);w.writerow(['seq','pc','rw','vaddr','paddr','size','is_io'])

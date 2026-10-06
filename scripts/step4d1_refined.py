@@ -3,7 +3,7 @@
 for the selected G_t(D=3,C=8) population. Structural evidence only.
 """
 import csv,glob,os,re,collections,statistics
-RR={'add','sub','and','or','xor','sll','srl','sra','slt','sltu','mul','mulh','mulhu','mulhsu','div','divu','rem','remu'}
+RR={'add','sub','and','or','xor','sll','srl','sra','slt','sltu','mul','mulh','mulhu','mulhsu'}
 RI={'addi','andi','ori','xori','slli','srli','srai','slti','sltiu'}
 EL=RR|RI;D=3;C=8
 ALIASES={'zero':'x0','ra':'x1','sp':'x2','gp':'x3','tp':'x4',
@@ -22,6 +22,8 @@ def usedef(op,a):
  A=[n(x) for x in a]
  if op in RR or op in RI:
   q=elig(op,A);return set(q[1]),({q[0]} if q[0]!='x0' else set())
+ if op in {'div','divu','rem','remu'} and len(A)>=3:
+  return set(x for x in A[1:3] if x!='x0'),({A[0]} if A[0]!='x0' else set())
  if op in {'lui','auipc'} and A:return set(),({A[0]} if A[0]!='x0' else set())
  if op in {'lb','lh','lw','lbu','lhu'} and A:
   u=set(regs(','.join(A[1:])));return u,({A[0]} if A[0]!='x0' else set())

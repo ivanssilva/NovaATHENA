@@ -75,7 +75,7 @@ for pi,p in enumerate(paths,1):
   q=elig(op,a)
   if q and q[0]!='x0':deflive[i]=q[0] in live
   live.difference_update(d);live.update(u)
-  known=(op in RR or op in RI or op in {'lui','auipc','lb','lh','lw','lbu','lhu','sb','sh','sw','beq','bne','blt','bge','bltu','bgeu','jal','jalr','mv','not','neg','snez','seqz','bnez','beqz','bltz','bgez','blez','bgtz','bgt','ble','bgtu','bleu','j','ret','jr','csrrs','ecall','ebreak','fence','fence.i','nop'})
+  known=(op in RR or op in RI or op in {'div','divu','rem','remu'} or op in {'lui','auipc','lb','lh','lw','lbu','lhu','sb','sh','sw','beq','bne','blt','bge','bltu','bgeu','jal','jalr','mv','not','neg','snez','seqz','bnez','beqz','bltz','bgez','blez','bgtz','bgt','ble','bgtu','bleu','j','ret','jr','csrrs','ecall','ebreak','fence','fence.i','nop'})
   if not known:unknown[(op,tuple(a))]+=1
  g=G();ng=[0]
  def flush():

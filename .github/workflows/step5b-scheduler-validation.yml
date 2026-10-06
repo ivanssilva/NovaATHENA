@@ -1,0 +1,22 @@
+name: ATHENA Step 5B scheduler validation
+on:
+  push:
+    paths:
+      - 'scripts/step5b_scheduler_validation.py'
+      - '.github/workflows/step5b-scheduler-validation.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run analytical synthetic validation
+        run: |
+          python3 scripts/step5b_scheduler_validation.py | tee step5b_scheduler_validation.log
+          grep -q 'STEP5B_VALIDATION cases 12 failures 0' step5b_scheduler_validation.log
+          grep -q 'barriers_not_crossed=yes' step5b_scheduler_validation.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5b-scheduler-validation
+          path: step5b_scheduler_validation.log

@@ -1,0 +1,25 @@
+name: ATHENA Step 4D.2 interface sizing
+on:
+  push:
+    paths:
+      - 'scripts/step4d2_interface.py'
+      - '.github/workflows/step4d2-interface.yml'
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37453473962
+          name: athena-step4d1-refined
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - run: |
+          cp source/step4d1_refined_counts.csv .
+          python3 scripts/step4d2_interface.py | tee step4d2_interface.log
+          grep -q 'STEP4D2_AUDIT pairs 38' step4d2_interface.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athena-step4d2-interface
+          path: step4d2_interface.log

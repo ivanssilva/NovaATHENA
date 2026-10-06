@@ -1,0 +1,38 @@
+name: ATHENA Step 5B explicit temporal scheduler
+on:
+  push:
+    paths:
+      - 'scripts/step5b_temporal_scheduler.py'
+      - '.github/workflows/step5b-temporal-scheduler.yml'
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - name: Restore immutable validated traces
+        run: |
+          mkdir -p embench-results
+          find source -type f -name '*.trace.csv' -exec cp {} embench-results/ \;
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Run explicit deterministic temporal scheduler
+        run: |
+          python3 -u scripts/step5b_temporal_scheduler.py | tee step5b_temporal_scheduler.log
+          grep -q 'STEP5B_AUDIT traces 38 pairs 38' step5b_temporal_scheduler.log
+          grep -q 'STEP5B_RESULT O2 benchmarks 19' step5b_temporal_scheduler.log
+          grep -q 'STEP5B_RESULT O3 benchmarks 19' step5b_temporal_scheduler.log
+          grep -q 'STEP5B_CAUTION' step5b_temporal_scheduler.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5b-explicit-temporal
+          path: |
+            step5b_temporal_scheduler.log
+            step5b_temporal_results.csv

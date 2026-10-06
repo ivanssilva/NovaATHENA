@@ -98,8 +98,7 @@ jobs:
           test "$(find athena/memory-results -name '*.memory.csv' | wc -l)" -eq 38
           test "$(grep -c '^MEMMERGE matched' athena/memory-results/audit.log)" -eq 38
           test "$(grep -c 'missing 1 extra 0' athena/memory-results/audit.log)" -eq 38
-          test "$(grep -c '^MEMMERGE_EXCLUDED terminal_harness_store 1$' athena/memory-results/audit.log)" -eq 38
-          test "$(grep -c '^MEMMERGE_MISSING ' athena/memory-results/audit.log)" -eq 38
+          test "$(grep -c '^MEMMERGE_EXCLUDED terminal_harness_store 1
       - name: Aggregate audit
         run: |
           python3 - <<'PY'
@@ -122,7 +121,7 @@ jobs:
             athena/memory-results/
             athena/QEMU_MEMORY_TRACE_VERSION.txt
  athena/memory-results/audit.log)" -eq 38
-          test "$(grep -c 'MEMMERGE_MISSING' athena/memory-results/audit.log)" -eq 38
+          test "$(grep -c '^MEMMERGE_MISSING ' athena/memory-results/audit.log)" -eq 38
       - name: Aggregate audit
         run: |
           python3 - <<'PY'
@@ -133,8 +132,7 @@ jobs:
             rr=list(csv.DictReader(open(p)));total+=len(rr)
             for r in rr:sizes[r['size']]+=1;rw[r['rw']]+=1;io+=int(r['is_io'])
           print('MEMTRACE_AUDIT files',len(fs),'accesses',total,'io',io,'sizes',dict(sizes),'rw',dict(rw))
-          assert total==29294677-38,(total,29294677-38)
-          print('MEMTRACE_SCOPE structural_memory_ops',29294677,'excluded_terminal_harness_stores',38,'captured_effective_accesses',total)
+          assert total==29294677-38,(total,29294677-38)\n          print('MEMTRACE_SCOPE structural_memory_ops',29294677,'excluded_terminal_harness_stores',38,'captured_effective_accesses',total)
           PY
       - uses: actions/upload-artifact@v4
         if: always()

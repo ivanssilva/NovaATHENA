@@ -1,0 +1,37 @@
+name: ATHENA Step 5B C2 temporal upper bound
+on:
+  push:
+    paths:
+      - 'scripts/step5b_c2_upper_bound.py'
+      - '.github/workflows/step5b-c2-upper-bound.yml'
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - run: |
+          mkdir -p embench-results
+          find source -type f -name '*.trace.csv' -exec cp {} embench-results/ \;
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Run C2 temporal upper bound
+        run: |
+          python3 -u scripts/step5b_c2_upper_bound.py | tee step5b_c2_upper_bound.log
+          grep -q 'STEP5B_C2_AUDIT traces 38 pairs 38 invariant_c2_le_w8_le_h4 yes' step5b_c2_upper_bound.log
+          grep -q 'STEP5B_C2_RESULT O2' step5b_c2_upper_bound.log
+          grep -q 'STEP5B_C2_RESULT O3' step5b_c2_upper_bound.log
+          grep -q 'STEP5B_C2_CAUTION' step5b_c2_upper_bound.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5b-c2-upper-bound
+          path: |
+            step5b_c2_upper_bound.log
+            step5b_c2_upper_bound.csv

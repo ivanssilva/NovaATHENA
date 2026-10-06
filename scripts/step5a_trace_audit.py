@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """ATHENA Step 5A: audit validated Embench traces for temporal-model fields.
-Audits what is actually present/reconstructable; does not invent cycle data.
+Audits what is actually present/reconstructable; does not invent cycle data. This audit gates the temporal simulator.
 """
 import csv,glob,os,re,collections
 paths=sorted(glob.glob('embench-results/*_O*.trace.csv')); assert len(paths)==38

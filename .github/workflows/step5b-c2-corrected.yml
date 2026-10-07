@@ -1,4 +1,5 @@
 name: ATHENA Step 5B corrected C2 temporal bound
+# Definitive Step 5B trigger after validated microcase and fail-fast corrections
 on:
   push:
     paths:

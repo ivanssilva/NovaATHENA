@@ -1,0 +1,22 @@
+name: ATHENA Step 5B C2 semantic validation
+on:
+  push:
+    paths:
+      - 'scripts/step5b_c2_validation.py'
+      - '.github/workflows/step5b-c2-validation.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate C2 semantics analytically
+        run: |
+          python3 scripts/step5b_c2_validation.py | tee step5b_c2_validation.log
+          grep -q 'STEP5B_C2_VALIDATION cases 8 failures 0' step5b_c2_validation.log
+          grep -q 'max_two_pairs_per_cycle=yes' step5b_c2_validation.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5b-c2-validation
+          path: step5b_c2_validation.log

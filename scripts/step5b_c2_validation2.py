@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Independent analytical validation of Step 5B C2 same-cycle fusion semantics."""
-import heapq
 def dag(nodes):
  p=[set() for _ in nodes];s=[[] for _ in nodes];last={}
  for i,(d,src) in enumerate(nodes):
@@ -20,14 +19,12 @@ def sched(nodes,width=8,npairs=2):
    if u in used:continue
    chosen.append(u);used.add(u)
    if fc<npairs and len(chosen)<width:
-    # Consumer is not ready at cycle start; exactly producer u is missing.
-    cand=[v for v in s[u] if v not in done and v not in used and (p[v]-done)=={u}]
+    # A C2 consumer may be admitted only when its sole unsatisfied
+    # dependency at cycle start is producer u.
+    cand=[vv for vv in s[u] if vv not in done and vv not in used and (p[vv]-done)=={u}]
     if cand:
-     v=min(cand);chosen.append(v);used.add(v);fc+=1
+     vv=min(cand);chosen.append(vv);used.add(vv);fc+=1
   assert chosen
-  # no consumer can fuse through another fused consumer in same cycle
-  for i in range(1,len(chosen)):
-   pass
   done.update(chosen);cycles+=1;fusions+=fc;maxf=max(maxf,fc)
   assert fc<=npairs
  return cycles,fusions,maxf
@@ -35,7 +32,10 @@ R=lambda d,*s:(d,list(s))
 cases=[
  ('chain2',[R('x1','x2'),R('x3','x1')],(1,1)),
  ('two_chains',[R('x1','x10'),R('x2','x1'),R('x3','x11'),R('x4','x3')],(1,2)),
- ('three_chains_pair_limit',[R('x1','x10'),R('x2','x1'),R('x3','x11'),R('x4','x3'),R('x5','x12'),R('x6','x5')],(2,3)),
+ # With three chains and only two C2 pairs, the third producer can still
+ # execute in cycle 1 as a normal operation. Its consumer is ready in cycle 2.
+ # Thus the minimum is two cycles, but only two same-cycle fusions are required.
+ ('three_chains_pair_limit',[R('x1','x10'),R('x2','x1'),R('x3','x11'),R('x4','x3'),R('x5','x12'),R('x6','x5')],(2,2)),
  ('chain3',[R('x1','x10'),R('x2','x1'),R('x3','x2')],(2,1)),
  ('fork',[R('x1','x10'),R('x2','x1'),R('x3','x1')],(2,1)),
  ('join',[R('x1','x10'),R('x2','x11'),R('x3','x1','x2')],(2,0)),

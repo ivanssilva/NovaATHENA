@@ -1,0 +1,41 @@
+name: ATHENA Step 5C memory cache characterization
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, actions: read, issues: write}
+jobs:
+  run:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] ATHENA Step 5C memory cache characterization'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37529136813
+          name: athena-embench-memory-traces
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: memory
+      - name: Cache characterization
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -u scripts/step5c_memory_cache.py | tee step5c_memory_cache.log
+          grep -q 'STEP5C_MEM_AUDIT traces 38' step5c_memory_cache.log
+          grep -q 'STEP5C_MEM_CONTRACT' step5c_memory_cache.log
+          grep -q 'no cache-hit or lower-memory latency is assumed' step5c_memory_cache.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5c-memory-cache
+          path: |
+            step5c_memory_cache.log
+            step5c_memory_cache.csv
+      - name: Report
+        if: always() && github.event_name == 'issues'
+        shell: bash
+        env: {GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}', ISSUE_NUMBER: '${{ github.event.issue.number }}', RUN_ID: '${{ github.run_id }}', HEAD_SHA: '${{ github.sha }}', JOB_STATUS: '${{ job.status }}'}
+        run: |
+          { echo "ATHENA_STEP5C_MEM_RUN_ID $RUN_ID"; echo "ATHENA_STEP5C_MEM_HEAD_SHA $HEAD_SHA"; echo "ATHENA_STEP5C_MEM_JOB_STATUS $JOB_STATUS"; grep -E 'STEP5C_MEM_(AUDIT|RESULT|CONTRACT|SCOPE|RULE)' step5c_memory_cache.log || true; } > report.md
+          gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" --body-file report.md

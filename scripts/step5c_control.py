@@ -20,13 +20,13 @@ for p in paths:
   ant_mis+=tk
   pred=state[pc]>=2; bim_mis+=(pred!=tk)
   state[pc]=min(3,state[pc]+1) if tk else max(0,state[pc]-1)
- assert n>0
- tot.update(branches=n,taken=taken,ant_mis=ant_mis,bim_mis=bim_mis)
- out.append((b,opt,n,taken,ant_mis,bim_mis,ant_mis/n,bim_mis/n))
- print('STEP5C_CONTROL_TRACE',name,'branches',n,'taken',taken,'taken_rate',f'{taken/n:.9f}','ANT_mispred',ant_mis,'ANT_rate',f'{ant_mis/n:.9f}','BIM2_mispred',bim_mis,'BIM2_rate',f'{bim_mis/n:.9f}',flush=True)
+ ant_rate=(ant_mis/n if n else 0.0); bim_rate=(bim_mis/n if n else 0.0); taken_rate=(taken/n if n else 0.0)
+ tot.update(branches=n,taken=taken,ant_mis=ant_mis,bim_mis=bim_mis,zero_branch_traces=int(n==0))
+ out.append((b,opt,n,taken,ant_mis,bim_mis,ant_rate,bim_rate))
+ print('STEP5C_CONTROL_TRACE',name,'branches',n,'taken',taken,'taken_rate',f'{taken_rate:.9f}','ANT_mispred',ant_mis,'ANT_rate',f'{ant_rate:.9f}','BIM2_mispred',bim_mis,'BIM2_rate',f'{bim_rate:.9f}',flush=True)
 with open('step5c_control.csv','w',newline='') as f:
  w=csv.writer(f);w.writerow(['benchmark','opt','conditional_branches','taken','ant_mispred','bimodal2_mispred','taken_rate','bimodal2_mispred_rate']);w.writerows(out)
-print('STEP5C_CONTROL_AUDIT traces',len(paths),'branches',tot['branches'],'taken',tot['taken'],'ANT_mispred',tot['ant_mis'],'BIM2_mispred',tot['bim_mis'],flush=True)
+print('STEP5C_CONTROL_AUDIT traces',len(paths),'zero_branch_traces',tot['zero_branch_traces'],'branches',tot['branches'],'taken',tot['taken'],'ANT_mispred',tot['ant_mis'],'BIM2_mispred',tot['bim_mis'],flush=True)
 for opt in ('O2','O3'):
  z=[r for r in out if r[1]==opt]
  for label,idx in [('ANT',6),('BIM2',7)]:

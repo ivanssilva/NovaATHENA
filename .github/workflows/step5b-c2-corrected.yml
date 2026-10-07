@@ -1,0 +1,40 @@
+name: ATHENA Step 5B corrected C2 temporal bound
+on:
+  push:
+    paths:
+      - 'scripts/step5b_c2_validation2.py'
+      - 'scripts/step5b_c2_corrected.py'
+      - '.github/workflows/step5b-c2-corrected.yml'
+  workflow_dispatch:
+jobs:
+  validate-and-run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Analytical C2 microcases
+        run: python3 scripts/step5b_c2_validation2.py | tee c2_validation.log
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: source
+      - run: |
+          mkdir -p embench-results
+          find source -type f -name '*.trace.csv' -exec cp {} embench-results/ \;
+          test "$(find embench-results -name '*.trace.csv' | wc -l)" -eq 38
+      - name: Corrected corpus experiment
+        run: |
+          python3 -u scripts/step5b_c2_corrected.py | tee c2_corrected.log
+          grep -q 'STEP5B_C2_AUDIT traces 38 pairs 38 invariant_c2_le_w8_le_h4 yes' c2_corrected.log
+          grep -q 'STEP5B_C2_RESULT O2' c2_corrected.log
+          grep -q 'STEP5B_C2_RESULT O3' c2_corrected.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5b-c2-corrected
+          path: |
+            c2_validation.log
+            c2_corrected.log
+            step5b_c2_corrected.csv

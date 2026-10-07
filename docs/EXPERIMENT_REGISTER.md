@@ -122,3 +122,15 @@ speedups; clock-period/frequency effects must be evaluated separately.
 ### Status
 
 **ACCEPTED — Step 5B definitive corrected result.**
+
+
+## Remaining temporal roadmap
+
+The temporal evaluation sequence is fixed as follows and must not be silently renumbered or expanded into new scientific steps:
+
+- Step 5A — temporal contract and trace audit/enrichment: CLOSED.
+- Step 5B — idealized compute-only equal-clock temporal bound: ACCEPTED.
+- Step 5C — progressively realistic temporal model: cumulatively add MUL latency, control effects, configuration/discovery overhead, memory/cache effects, and frequency/critical-path effects; report each layer separately.
+- Step 5D — final per-benchmark comparison against the explicitly modeled 4-wide OoO superscalar baseline.
+
+Step 5C starts from the frozen accepted 5B model. Its first executable layer uses the already documented shared pipelined multiplier sensitivity L=6/7/8 cycles, II=1. Control, configuration, memory/cache, and frequency layers must use measured or explicitly declared contracts; arbitrary values are prohibited.

@@ -1,0 +1,41 @@
+name: ATHENA Step 5C configuration temporal sensitivity
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, actions: read, issues: write}
+jobs:
+  run:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] ATHENA Step 5C configuration temporal sensitivity'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - name: Configuration temporal sensitivity
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -u scripts/step5c_configuration_temporal.py | tee step5c_configuration_temporal.log
+          grep -q 'STEP5C_CFGT_AUDIT traces 38' step5c_configuration_temporal.log
+          grep -q 'STEP5C_CFGT_FORMULA' step5c_configuration_temporal.log
+          grep -q 'STEP5C_CFGT_RULE no sensitivity point' step5c_configuration_temporal.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5c-configuration-temporal
+          path: |
+            step5c_configuration_temporal.log
+            step5c_configuration_temporal.csv
+      - name: Report
+        if: always() && github.event_name == 'issues'
+        shell: bash
+        env: {GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}', ISSUE_NUMBER: '${{ github.event.issue.number }}', RUN_ID: '${{ github.run_id }}', HEAD_SHA: '${{ github.sha }}', JOB_STATUS: '${{ job.status }}'}
+        run: |
+          { echo "ATHENA_STEP5C_CFGT_RUN_ID $RUN_ID"; echo "ATHENA_STEP5C_CFGT_HEAD_SHA $HEAD_SHA"; echo "ATHENA_STEP5C_CFGT_JOB_STATUS $JOB_STATUS"; grep -E 'STEP5C_CFGT_(AUDIT|SENS|FORMULA|SCOPE|RULE)' step5c_configuration_temporal.log || true; } > report.md
+          gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" --body-file report.md

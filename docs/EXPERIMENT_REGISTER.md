@@ -86,6 +86,39 @@ The run is accepted only if all of the following hold:
 8. the accepted run ID, head SHA, artifact ID/digest, aggregate results, and
    interpretation are recorded here.
 
+### Accepted definitive run
+
+Primary run: **37628255296** (workflow run #6, event `issues`)  
+Head SHA: **e49e4fa6d4ba7604dcd798d3b8927c13bc93f882**  
+Job: **112815528197**, conclusion: **success**  
+Artifact: **athena-step5b-c2-corrected**, artifact **11484823579**  
+Artifact digest: **sha256:4bf21fd309bcd3aad8799fbb8a697c28296ae92ecdeaa3b5e02640f5d7a5c80c**
+
+Independent redundant run #5 (push), run **37628236226**, also completed successfully
+from the same head SHA and produced the same aggregate results.
+
+Validation: all 8 analytical C2 microcases passed, including
+`three_chains_pair_limit = cycles 2, fusions 2`.
+
+Corpus audit:
+
+    STEP5B_C2_AUDIT traces 38 pairs 38 invariant_c2_le_w8_le_h4 yes total_fusions 9794944
+
+Aggregate cycle-count ratios:
+
+- O2 H4/C2: median 1.200063515; Q1 1.082523223; Q3 1.432253688; aggregate 1.290409192.
+- O2 W8/C2: median 1.139083536; Q1 1.079635779; Q3 1.346312341; aggregate 1.241703037.
+- O3 H4/C2: median 1.254122611; Q1 1.116009178; Q3 1.432285315; aggregate 1.348669304.
+- O3 W8/C2: median 1.138149045; Q1 1.116007543; Q3 1.356116272; aggregate 1.295018880.
+
+Interpretation: under the corrected optimistic same-cycle C2 model, widening from
+H4 to W8 contributes part of the cycle-count reduction, while C2 provides a
+substantial additional reduction on this corpus. Relative to W8, the aggregate
+cycle-count gain from C2 is about 1.242x for O2 and 1.295x for O3. Relative to H4,
+the complete H4-to-C2 structural-temporal gain is about 1.290x for O2 and 1.349x
+for O3. These values remain structural-temporal cycle-count bounds, not physical
+speedups; clock-period/frequency effects must be evaluated separately.
+
 ### Status
 
-**IN VALIDATION — no definitive Step 5B numerical result accepted yet.**
+**ACCEPTED — Step 5B definitive corrected result.**

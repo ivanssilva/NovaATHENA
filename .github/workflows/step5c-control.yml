@@ -1,0 +1,44 @@
+name: ATHENA Step 5C control layer
+on:
+  push:
+    paths:
+      - 'scripts/step5c_control.py'
+      - '.github/workflows/step5c-control.yml'
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, actions: read, issues: write}
+jobs:
+  run:
+    if: github.event_name != 'issues' || startsWith(github.event.issue.title, '[RUN] ATHENA Step 5C control')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - name: Trace-driven control layer
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -u scripts/step5c_control.py | tee step5c_control.log
+          grep -q 'STEP5C_CONTROL_AUDIT traces 38' step5c_control.log
+          grep -q 'STEP5C_CONTROL_CONTRACT outcome measured' step5c_control.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5c-control
+          path: |
+            step5c_control.log
+            step5c_control.csv
+      - name: Report to trigger issue
+        if: always() && github.event_name == 'issues'
+        shell: bash
+        env: {GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}', ISSUE_NUMBER: '${{ github.event.issue.number }}', RUN_ID: '${{ github.run_id }}', HEAD_SHA: '${{ github.sha }}', JOB_STATUS: '${{ job.status }}'}
+        run: |
+          { echo "ATHENA_STEP5C_CONTROL_RUN_ID $RUN_ID"; echo "ATHENA_STEP5C_CONTROL_HEAD_SHA $HEAD_SHA"; echo "ATHENA_STEP5C_CONTROL_JOB_STATUS $JOB_STATUS"; grep -E 'STEP5C_CONTROL_(AUDIT|ACCURACY|PENALTY|CONTRACT|SCOPE)' step5c_control.log || true; } > report.md
+          gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" --body-file report.md

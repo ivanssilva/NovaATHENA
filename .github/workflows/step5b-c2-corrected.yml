@@ -1,5 +1,4 @@
 name: ATHENA Step 5B corrected C2 temporal bound
-# Definitive Step 5B trigger after validated microcase and fail-fast corrections
 on:
   push:
     paths:
@@ -7,8 +6,17 @@ on:
       - 'scripts/step5b_c2_corrected.py'
       - '.github/workflows/step5b-c2-corrected.yml'
   workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
 jobs:
   validate-and-run:
+    if: github.event_name != 'issues' || startsWith(github.event.issue.title, '[RUN] ATHENA Step 5B')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -44,3 +52,34 @@ jobs:
             c2_validation.log
             c2_corrected.log
             step5b_c2_corrected.csv
+      - name: Report run back to trigger issue
+        if: always() && github.event_name == 'issues'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          HEAD_SHA: ${{ github.sha }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo "ATHENA_STEP5B_RUN_ID $RUN_ID"
+            echo "ATHENA_STEP5B_RUN_ATTEMPT $RUN_ATTEMPT"
+            echo "ATHENA_STEP5B_HEAD_SHA $HEAD_SHA"
+            echo "ATHENA_STEP5B_JOB_STATUS $JOB_STATUS"
+            echo
+            if [ -f c2_validation.log ]; then
+              echo '### Validation'
+              echo '~~~'
+              cat c2_validation.log
+              echo '~~~'
+            fi
+            if [ -f c2_corrected.log ]; then
+              echo '### Corpus summary'
+              echo '~~~'
+              grep -E 'STEP5B_C2_(AUDIT|RESULT)' c2_corrected.log || true
+              echo '~~~'
+            fi
+          } > run_report.md
+          gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" --body-file run_report.md

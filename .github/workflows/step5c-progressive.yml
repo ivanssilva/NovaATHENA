@@ -1,0 +1,58 @@
+name: ATHENA Step 5C progressive temporal model
+on:
+  push:
+    paths:
+      - 'scripts/step5c_progressive.py'
+      - '.github/workflows/step5c-progressive.yml'
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  actions: read
+  issues: write
+jobs:
+  run:
+    if: github.event_name != 'issues' || startsWith(github.event.issue.title, '[RUN] ATHENA Step 5C')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37529136813
+          name: athena-embench-memory-traces
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: memory
+      - name: Step 5C progressive model
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -u scripts/step5c_progressive.py | tee step5c_progressive.log
+          grep -q 'STEP5C_LAYER MUL implemented' step5c_progressive.log
+          grep -q 'STEP5C_RULE no arbitrary values introduced' step5c_progressive.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5c-progressive
+          path: |
+            step5c_progressive.log
+            step5c_progressive.csv
+      - name: Report run to trigger issue
+        if: always() && github.event_name == 'issues'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_ID: ${{ github.run_id }}
+          HEAD_SHA: ${{ github.sha }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          { echo "ATHENA_STEP5C_RUN_ID $RUN_ID"; echo "ATHENA_STEP5C_HEAD_SHA $HEAD_SHA"; echo "ATHENA_STEP5C_JOB_STATUS $JOB_STATUS"; echo; grep -E 'STEP5C_(AUDIT|MUL_RESULT|LAYER|PENDING|RULE)' step5c_progressive.log || true; } > report.md
+          gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" --body-file report.md

@@ -89,9 +89,9 @@ for p in paths:
   elif cur:epochs.append(cur);cur=[]
  if cur:epochs.append(cur)
  common=int(base[(b,opt)]['bim2_control_cycles'])+int(base[(b,opt)]['l1_miss_cycles'])
- values=[sum((simulate(e,k)[0] for e in epochs)) for k in (0,1,2)]
- # Count pairing in separate pass for reproducibility and unambiguous accounting.
- pairs=[sum((simulate(e,k)[1] for e in epochs)) for k in (1,2)]
+ metrics=[tuple(map(sum,zip(*(simulate(e,k) for e in epochs)))) for k in (0,1,2)]
+ values=[m[0] for m in metrics]
+ pairs=[metrics[1][1],metrics[2][1]]
  assert values[0]>=min(values)
  for k,pc in [(0,0),(1,pairs[0]),(2,pairs[1])]:
   total=values[k]+common

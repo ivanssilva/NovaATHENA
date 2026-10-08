@@ -34,9 +34,13 @@ def ooo(nodes,rob_size=32,mul_latency=7):
   count=0
   while queue and count<4 and done.get(queue[0],10**18)<=cyc:
    queue.popleft();retired+=1;count+=1
-  for i in range(dispatched,min(n,dispatched+4,retired+rob_size)):
+  slots=min(4,n-dispatched,rob_size-len(queue))
+  assert slots>=0,(n,dispatched,retired,len(queue))
+  for i in range(dispatched,dispatched+slots):
    queue.append(i)
-  dispatched+=min(4,n-dispatched,max(0,rob_size-(dispatched-retired)))
+  dispatched+=slots
+  assert len(queue)==dispatched-retired and len(queue)<=rob_size
+  assert len(set(queue))==len(queue)
   issued=0;mul_used=False
   for i in queue:
    if issued>=4:break
@@ -47,6 +51,7 @@ def ooo(nodes,rob_size=32,mul_latency=7):
     issued+=1;mul_used|=nodes[i][2]
   cyc+=1
   assert cyc<max(10000,n*20),(n,cyc)
+ assert retired==dispatched==n and not queue
  return cyc
 paths=sorted(set(glob.glob('structural/*_O*.trace.csv')+glob.glob('structural/**/*.trace.csv',recursive=True)))
 assert len(paths)==38,len(paths)

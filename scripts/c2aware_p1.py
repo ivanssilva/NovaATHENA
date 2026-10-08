@@ -103,7 +103,7 @@ def test():
  # older non-paired MUL is still constrained to one per cycle
  mul=[('x1',('x2','x3'),True),('x4',('x5','x6'),True)]
  assert simulate(mul,2)[1]==0
- print('OOOC2_SELFTEST_PASS',flush=True)
+ print('C2AWARE_SELFTEST_PASS',flush=True)
 test()
 paths=sorted(set(glob.glob('structural/*_O*.trace.csv')+glob.glob('structural/**/*.trace.csv',recursive=True)))
 assert len(paths)==38,len(paths)

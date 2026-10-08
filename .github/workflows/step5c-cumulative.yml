@@ -1,0 +1,34 @@
+name: ATHENA Step 5C cumulative sensitivity
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read}
+jobs:
+  cumulative:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] ATHENA Step 5C cumulative sensitivity'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {run-id: 37635348918, name: athena-step5c-progressive, github-token: '${{ secrets.GITHUB_TOKEN }}', path: inputs/mul}
+      - uses: actions/download-artifact@v4
+        with: {run-id: 37669446522, name: athena-step5c-control, github-token: '${{ secrets.GITHUB_TOKEN }}', path: inputs/control}
+      - uses: actions/download-artifact@v4
+        with: {run-id: 37673004359, name: athena-step5c-configuration-temporal, github-token: '${{ secrets.GITHUB_TOKEN }}', path: inputs/config}
+      - uses: actions/download-artifact@v4
+        with: {run-id: 37765790426, name: athena-step5c-memory-cache, github-token: '${{ secrets.GITHUB_TOKEN }}', path: inputs/memory}
+      - name: Compose accepted layers
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 scripts/step5c_cumulative.py | tee step5c_cumulative.log
+          grep -q 'STEP5C_CUM_AUDIT benchmarks 38' step5c_cumulative.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5c-cumulative
+          path: |
+            step5c_cumulative.csv
+            step5c_cumulative.log

@@ -47,10 +47,11 @@ paths=sorted(by.values()); assert len(paths)==38,(len(paths),paths[:10])
 out=[]; totals=collections.Counter()
 for p in paths:
  name=os.path.basename(p)
- for suf in ('.trace.enriched.csv','.enriched.csv','.trace.csv','.csv'):
+ for suf in ('.trace.enriched.csv','.enriched.csv','.trace.csv','.memory.csv','.csv'):
   if name.endswith(suf):name=name[:-len(suf)];break
  try:b,opt=name.rsplit('_',1)
  except: b,opt=name,'NA'
+ assert opt in ('O2','O3'),(p,name,opt)
  add=[];io=0;reads=writes=0
  with open(p,newline='') as f:
   for r in csv.DictReader(f):
@@ -70,6 +71,7 @@ print('STEP5C_MEM_AUDIT traces',totals['traces'],'cacheable_accesses',totals['ac
 for opt in ('O2','O3'):
  for kib,ways in CASES:
   z=[r for r in out if r[1]==opt and r[2]==kib and r[3]==ways]
+  assert len(z)==19,(opt,kib,ways,len(z))
   h=sum(r[6] for r in z);m=sum(r[7] for r in z)
   print('STEP5C_MEM_RESULT',opt,'C',kib,'KiB','W',ways,'hits',h,'misses',m,'miss_rate',f'{m/(h+m):.9f}',flush=True)
 print('STEP5C_MEM_CONTRACT L1D sensitivity: 64-B line, LRU, write-allocate, capacities 16/32/64 KiB, associativity 1/2/4; effective addresses from definitive Step5A traces.',flush=True)

@@ -1,0 +1,40 @@
+name: OoO4-C2 bounded RAW-chain DSE
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, actions: read}
+jobs:
+  experiment:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] OoO4 C2 DSE'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37767170759
+          name: athena-step5c-cumulative
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: inputs/cumulative
+      - name: Run three variants and self-tests
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -u scripts/ooo4_c2_experiment.py | tee ooo4_c2_experiment.log
+          grep -q OOOC2_SELFTEST_PASS ooo4_c2_experiment.log
+          grep -q 'OOOC2_RESULT O3 c2_units 2' ooo4_c2_experiment.log
+          test "$(grep -c '^OOOC2_TRACE ' ooo4_c2_experiment.log)" -eq 38
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ooo4-c2-bounded-dse
+          path: |
+            ooo4_c2_results.csv
+            ooo4_c2_experiment.log

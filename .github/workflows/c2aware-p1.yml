@@ -1,0 +1,40 @@
+name: OoO4 C2-aware P1 closed comparison
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, actions: read}
+jobs:
+  comparison:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] OoO4 C2-aware P1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37767170759
+          name: athena-step5c-cumulative
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: inputs/cumulative
+      - name: Compare frozen P0 against local 2-hop criticality P1
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -u scripts/c2aware_p1.py | tee c2aware_p1.log
+          grep -q C2AWARE_SELFTEST_PASS c2aware_p1.log
+          grep -q 'C2AWARE_RESULT O3 total_cycles' c2aware_p1.log
+          test "$(grep -c '^C2AWARE_TRACE ' c2aware_p1.log)" -eq 38
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c2aware-p0-p1-closed
+          path: |
+            c2aware_p0_p1.csv
+            c2aware_p1.log

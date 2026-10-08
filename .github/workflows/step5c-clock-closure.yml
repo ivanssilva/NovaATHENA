@@ -1,0 +1,31 @@
+name: ATHENA Step 5C clock closure
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read}
+jobs:
+  closure:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] ATHENA Step 5C clock closure'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37767170759
+          name: athena-step5c-cumulative
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: inputs/cumulative
+      - name: Evaluate clock break-even
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 scripts/step5c_clock_closure.py | tee step5c_clock_closure.log
+          grep -q 'STEP5C_CLOCK_AUDIT scenarios 16416 benchmarks 38' step5c_clock_closure.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5c-clock-closure
+          path: |
+            step5c_clock_break_even.csv
+            step5c_clock_closure.log

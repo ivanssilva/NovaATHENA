@@ -1,0 +1,38 @@
+name: ATHENA Step 5D OOO4 comparison
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, actions: read}
+jobs:
+  comparison:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] ATHENA Step 5D OOO4'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 37767170759
+          name: athena-step5c-cumulative
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: inputs/cumulative
+      - name: Run finite-ROB OOO4 comparison
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 -u scripts/step5d_ooo4.py | tee step5d_ooo4.log
+          grep -q 'STEP5D_AUDIT traces 38' step5d_ooo4.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: athena-step5d-ooo4
+          path: |
+            step5d_ooo4.csv
+            step5d_ooo4.log

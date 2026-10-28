@@ -65,8 +65,8 @@ for path in paths:
  bb=[];prev=None;nrows=0;nbb=0
  def process(window,k):
   c=counters[k];c['windows']+=1;c['BBs']+=len(window)
-  region=[r for block in window for r in block]
-  c['instructions']+=len(region)
+  region=[r for i,block in enumerate(window) for r in (([{'op':'__bb_boundary__','pc':'0','args':''}] if i else [])+block)]
+  c['instructions']+=sum(len(block) for block in window)
   island=[]
   def flush():
    if not island:return

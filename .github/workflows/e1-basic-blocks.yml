@@ -1,0 +1,44 @@
+name: NovaATHENA E1 closed basic-block characterization
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, actions: read, issues: write}
+jobs:
+  e1:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] NovaATHENA E1 closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - name: E1 frozen traces only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/e1_basic_blocks.py | tee e1.log
+          grep -q '^E1_AUDIT_PASS traces 38 ' e1.log
+          test "$(grep -c '^E1_TRACE ' e1.log)" -eq 38
+          python3 -m json.tool e1-results/manifest.json >/dev/null
+          cp e1.log e1-results/e1.log
+          printf '%s\n' "${{ github.sha }}" > e1-results/commit.txt
+          printf '%s\n' "${{ github.run_id }}" > e1-results/run_id.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: novaathena-e1-closed
+          path: e1-results/
+          retention-days: 90
+      - name: Persist run reference to issue
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          printf 'E1 run: https://github.com/%s/actions/runs/%s\nCommit: %s\nJob status: %s\nArtifact: novaathena-e1-closed (90 days)\n' "${{ github.repository }}" "${{ github.run_id }}" "${{ github.sha }}" "${{ job.status }}" > e1-issue-report.md
+          gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" --body-file e1-issue-report.md

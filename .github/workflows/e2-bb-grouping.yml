@@ -1,0 +1,43 @@
+name: NovaATHENA E2 closed retrospective BB grouping
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, actions: read, issues: write}
+jobs:
+  e2:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] NovaATHENA E2 closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 36850448602
+          name: athena-embench-structural
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: structural
+      - name: E2 bounded grouping
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/e2_bb_grouping.py | tee e2.log
+          grep -q '^E2_AUDIT_PASS traces 38 rows 152' e2.log
+          test "$(grep -c '^E2_TRACE ' e2.log)" -eq 38
+          cp e2.log e2-results/e2.log
+          echo "${{ github.sha }}" > e2-results/commit.txt
+          echo "${{ github.run_id }}" > e2-results/run_id.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: novaathena-e2-closed
+          path: e2-results/
+          retention-days: 90
+      - name: Persist run reference to issue
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          printf 'E2 run: https://github.com/%s/actions/runs/%s\nCommit: %s\nJob status: %s\nArtifact: novaathena-e2-closed (90 days)\n' "${{ github.repository }}" "${{ github.run_id }}" "${{ github.sha }}" "${{ job.status }}" > e2-issue-report.md
+          gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" --body-file e2-issue-report.md

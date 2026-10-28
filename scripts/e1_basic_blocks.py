@@ -40,7 +40,7 @@ for path in paths:
  lengths=[];eligible_tot=edges_tot=cond=bb_count=0;blocks=collections.Counter()
  current=[];prev=None;trace_rows=0
  def flush():
-  nonlocal bb_count,eligible_tot,edges_tot,global_bb
+  global bb_count,eligible_tot,edges_tot,global_bb
   if not current:return
   bb_count+=1;global_bb+=1
   e,edges,depth,lin=metrics(current);eligible_tot+=e;edges_tot+=edges

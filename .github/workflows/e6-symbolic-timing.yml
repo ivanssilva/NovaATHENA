@@ -1,0 +1,43 @@
+name: NovaATHENA E6 closed symbolic sensitivity
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  actions: read
+  issues: write
+jobs:
+  e6:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] NovaATHENA E6 closed'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          run-id: 40913386156
+          name: novaathena-e5-closed
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: e5-input
+      - name: E6 symbolic break-even
+        run: |
+          set -euo pipefail
+          python3 -u scripts/e6_symbolic_timing.py | tee e6.log
+          grep -q 'E6_AUDIT_PASS traces 38 rows 114 aggregates 6' e6.log
+          python3 -m json.tool e6-results/manifest.json >/dev/null
+          cp e6.log e6-results/
+          echo "${{ github.sha }}" > e6-results/commit.txt
+          echo "${{ github.run_id }}" > e6-results/run_id.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: novaathena-e6-closed
+          path: e6-results/
+          retention-days: 90
+      - name: Report
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" --body "E6 run https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }} status ${{ job.status }} commit ${{ github.sha }} artifact novaathena-e6-closed"

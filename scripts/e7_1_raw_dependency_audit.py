@@ -2,7 +2,7 @@
 """E7.1: full-writer RAW oracle vs independent synthetic rename observer.
 Uses committed architectural traces; no measured OoO rename/dispatch events.
 """
-import csv, glob, json, hashlib, collections
+import csv, glob, json, hashlib, collections, sys
 from pathlib import Path
 A=dict(zip(('zero ra sp gp tp t0 t1 t2 s0 s1 a0 a1 a2 a3 a4 a5 a6 a7 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 t3 t4 t5 t6').split(),['x'+str(i) for i in range(32)]))
 A['fp']='x8'
@@ -80,6 +80,9 @@ def microcases():
   d=[decode(op,args) for op,args in c]
   assert edges_reference(d)==edges_renamed(d),(c,edges_reference(d),edges_renamed(d))
 microcases()
+if '--self-test' in sys.argv:
+ print('E7_1_PREFLIGHT_PASS',flush=True)
+ sys.exit(0)
 paths=sorted(set(glob.glob('structural/*_O*.trace.csv')+glob.glob('structural/**/*.trace.csv',recursive=True)))
 assert len(paths)==38,('expected 38 traces',len(paths))
 Path('e7-1-results').mkdir(exist_ok=True)

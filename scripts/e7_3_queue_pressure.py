@@ -6,7 +6,7 @@ def simulate(arrivals, learn_cap, control_cap, learn_rate, control_rate, policy)
     assert policy in ("drop", "backpressure")
     assert learn_cap > 0 and control_cap > 0 and learn_rate > 0 and control_rate > 0
     learn, control = deque(), deque()
-    pending = deque((i, t) for t, count in enumerate(arrivals) for _ in range(count))
+    pending = deque((item_id, t) for item_id, t in enumerate(t for t, count in enumerate(arrivals) for _ in range(count)))
     accepted = dropped = blocked = completed = 0
     max_learn = max_control = 0
     latencies = []

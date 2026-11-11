@@ -11,6 +11,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Python syntax preflight
+        run: python3 -m py_compile scripts/e7_3_queue_pressure.py
       - name: Directed checks and finite-queue sweep
         shell: bash
         run: |

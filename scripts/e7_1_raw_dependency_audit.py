@@ -11,7 +11,7 @@ RR=set('add sub and or xor sll srl sra slt sltu mul mulh mulhu mulhsu div divu r
 RI=set('addi andi ori xori slli srli srai slti sltiu'.split())
 LOAD=set('lb lh lw lbu lhu'.split())
 STORE=set('sb sh sw'.split())
-BR=set('beq bne blt bge bltu bgeu'.split())
+BR=set('beq bne blt bge bltu bgeu ble bgt bleu bgtu beqz bnez bltz bgez bgtz blez'.split())
 J=set('jal jalr'.split())
 UP=set('lui auipc'.split())
 NO=set('ecall ebreak fence fence.i nop'.split())
@@ -23,7 +23,7 @@ def decode(op,args):
   base=a[1].split('(')[-1].rstrip(')');return a[0],[base],False
  if op in STORE and len(a)>=2:
   base=a[1].split('(')[-1].rstrip(')');return None,[a[0],base],False
- if op in BR and len(a)>=2:return None,a[:2],False
+ if op in BR and len(a)>=2:return None,a[:2] if op not in {'beqz','bnez','bltz','bgez','bgtz','blez'} else a[:1],False
  if op=='jal':
   if len(a)==1:return 'x1',[],False
   if len(a)>=2:return a[0],[],False

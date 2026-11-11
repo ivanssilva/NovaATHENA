@@ -33,6 +33,13 @@ def decode(op,args):
  if op in UP and len(a)>=2:return a[0],[],False
  if op in {'csrrw','csrrs','csrrc'} and len(a)==3:return a[0],[a[2]],False
  if op in {'csrrwi','csrrsi','csrrci'} and len(a)==3:return a[0],[],False
+ if op=='jr' and len(a)==1:return None,[a[0]],False
+ if op=='ret':return None,['x1'],False
+ if op=='j':return None,[],False
+ if op=='mv' and len(a)==2:return a[0],[a[1]],False
+ if op=='li' and len(a)==2:return a[0],[],False
+ if op=='call':return 'x1',[],False
+ if op=='tail':return None,[],False
  if op in NO:return None,[],False
  # Conservative: unknown instruction is not silently ignored.
  raise ValueError('Unsupported opcode or operands: '+op+' '+args)

@@ -31,6 +31,8 @@ def decode(op,args):
   if len(a)==1:return 'x1',[a[0].split('(')[-1].rstrip(')')],False
   if len(a)>=2:return a[0],[a[1].split('(')[-1].rstrip(')')],False
  if op in UP and len(a)>=2:return a[0],[],False
+ if op in {'csrrw','csrrs','csrrc'} and len(a)==3:return a[0],[a[2]],False
+ if op in {'csrrwi','csrrsi','csrrci'} and len(a)==3:return a[0],[],False
  if op in NO:return None,[],False
  # Conservative: unknown instruction is not silently ignored.
  raise ValueError('Unsupported opcode or operands: '+op+' '+args)

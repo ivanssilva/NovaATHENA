@@ -11,6 +11,8 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - name: Fast decoder preflight
+        run: python3 scripts/e7_1_raw_dependency_audit.py --self-test
       - uses: actions/download-artifact@v4
         with:
           run-id: 36850448602

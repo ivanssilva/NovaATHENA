@@ -23,13 +23,16 @@ def decode(op,args):
   base=a[1].split('(')[-1].rstrip(')');return a[0],[base],False
  if op in STORE and len(a)>=2:
   base=a[1].split('(')[-1].rstrip(')');return None,[a[0],base],False
- if op in BR and len(a)>=2:return None,a[:2] if op not in {'beqz','bnez','bltz','bgez','bgtz','blez'} else a[:1],False
+ if op in BR:
+  if op in {'beqz','bnez','bltz','bgez','bgtz','blez'} and len(a)==2:return None,[a[0]],False
+  if len(a)==3:return None,a[:2],False
  if op=='jal':
   if len(a)==1:return 'x1',[],False
   if len(a)>=2:return a[0],[],False
  if op=='jalr':
   if len(a)==1:return 'x1',[a[0].split('(')[-1].rstrip(')')],False
-  if len(a)>=2:return a[0],[a[1].split('(')[-1].rstrip(')')],False
+  if len(a)==2:return a[0],[a[1].split('(')[-1].rstrip(')')],False
+  if len(a)==3:return a[0],[a[1]],False
  if op in UP and len(a)>=2:return a[0],[],False
  if op in {'csrrw','csrrs','csrrc'} and len(a)==3:return a[0],[a[2]],False
  if op in {'csrrwi','csrrsi','csrrci'} and len(a)==3:return a[0],[],False
@@ -37,6 +40,7 @@ def decode(op,args):
  if op=='ret':return None,['x1'],False
  if op=='j':return None,[],False
  if op=='mv' and len(a)==2:return a[0],[a[1]],False
+ if op in {'neg','not','seqz','snez'} and len(a)==2:return a[0],[a[1]],False
  if op=='li' and len(a)==2:return a[0],[],False
  if op=='call':return 'x1',[],False
  if op=='tail':return None,[],False
@@ -57,6 +61,14 @@ def edges_renamed(decoded):
   if dst and dst!='x0':rat[dst]=(1000+i,i)
  return out
 def microcases():
+ # Independent directed expectations for operand semantics.
+ assert decode('jalr','ra,a5,0')==('x1',['x15'],False)
+ assert decode('seqz','a3,a3')==('x13',['x13'],False)
+ assert decode('bleu','t1,t0,16')==(None,['x6','x5'],False)
+ assert decode('csrrs','a0,mhartid,zero')==('x10',['x0'],False)
+ assert decode('sw','zero,0(t0)')==(None,['x0','x5'],False)
+ assert decode('ret','')==(None,['x1'],False)
+ assert decode('neg','a0,a3')==('x10',['x13'],False)
  cases=[
  [('addi','x5,x0,1'),('lw','x5,0(x6)'),('add','x7,x5,x8')],
  [('add','x5,x1,x2'),('add','x5,x3,x4'),('sub','x6,x5,x7')],
@@ -81,7 +93,7 @@ for path in paths:
   assert {'pc','op','args'}.issubset(rd.fieldnames)
   for r in rd:
    op=r['op'].lower().strip();args=r['args'];pc=int(r['pc'],0)
-   if prev_pc is not None and (prev_op in BR|J or pc!=prev_pc+4):bb+=1
+   if prev_pc is not None and (prev_op in BR|J|{'j','jr','ret','call','tail'} or pc!=prev_pc+4):bb+=1
    try: dst,src,is_eligible=decode(op,args)
    except ValueError:
     unsupported[op]+=1

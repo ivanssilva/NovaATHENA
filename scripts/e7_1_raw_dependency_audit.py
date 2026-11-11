@@ -20,9 +20,9 @@ def decode(op,args):
  if op in RR and len(a)==3:return a[0],a[1:3],True
  if op in RI and len(a)==3:return a[0],[a[1]],True
  if op in LOAD and len(a)>=2:
-  base=a[1].split('(')[-1].rstrip(')');return a[0],[base],False
+  base=a[1].split('(')[-1].rstrip(')');return a[0],[n(base)],False
  if op in STORE and len(a)>=2:
-  base=a[1].split('(')[-1].rstrip(')');return None,[a[0],base],False
+  base=a[1].split('(')[-1].rstrip(')');return None,[a[0],n(base)],False
  if op in BR:
   if op in {'beqz','bnez','bltz','bgez','bgtz','blez'} and len(a)==2:return None,[a[0]],False
   if len(a)==3:return None,a[:2],False
@@ -30,8 +30,8 @@ def decode(op,args):
   if len(a)==1:return 'x1',[],False
   if len(a)>=2:return a[0],[],False
  if op=='jalr':
-  if len(a)==1:return 'x1',[a[0].split('(')[-1].rstrip(')')],False
-  if len(a)==2:return a[0],[a[1].split('(')[-1].rstrip(')')],False
+  if len(a)==1:return 'x1',[n(a[0].split('(')[-1].rstrip(')'))],False
+  if len(a)==2:return a[0],[n(a[1].split('(')[-1].rstrip(')'))],False
   if len(a)==3:return a[0],[a[1]],False
  if op in UP and len(a)>=2:return a[0],[],False
  if op in {'csrrw','csrrs','csrrc'} and len(a)==3:return a[0],[a[2]],False

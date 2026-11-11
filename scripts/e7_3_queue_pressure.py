@@ -65,7 +65,7 @@ def main():
             "cycles","offered","accepted","completed","dropped","blocked_cycles","peak_learn","peak_control","mean_latency"])
         w.writeheader()
         count = 0
-        for name, arrivals in (("burst", [4]*12+[0]*12), ("sparse", [1 if i%4==0 else 0 for i in range(48))):
+        for name, arrivals in (("burst", [4]*12+[0]*12), ("sparse", [1 if i%4==0 else 0 for i in range(48)])):
             for policy in ("drop", "backpressure"):
                 for lc in (1, 2, 4, 8):
                     for cc in (1, 2, 4):

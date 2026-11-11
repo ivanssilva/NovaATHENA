@@ -1,0 +1,38 @@
+name: NovaATHENA E7.3b ControlQ saturation
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, issues: write}
+jobs:
+  saturation:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] NovaATHENA E7.3b ControlQ saturation'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python syntax preflight
+        run: python3 -m py_compile scripts/e7_3b_controlq_saturation.py
+      - name: Synthetic saturation sweep
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/e7_3b_controlq_saturation.py | tee e7-3b.log
+          grep -Fxq 'E7_3B_SYNTHETIC_PASS scenarios 144 controlq_saturation verified' e7-3b.log
+          cp e7-3b.log e7-3b-results/
+          echo "$GITHUB_SHA" > e7-3b-results/commit.txt
+          echo "$GITHUB_RUN_ID" > e7-3b-results/run_id.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: novaathena-e7-3b-controlq
+          path: e7-3b-results/
+          retention-days: 90
+      - name: Report run
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "E7.3b ControlQ: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID | status: $JOB_STATUS | commit: $GITHUB_SHA"

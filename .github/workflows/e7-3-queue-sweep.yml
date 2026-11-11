@@ -1,0 +1,36 @@
+name: NovaATHENA E7.3 synthetic queue sweep
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, issues: write}
+jobs:
+  queue-sweep:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] NovaATHENA E7.3 synthetic'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Directed checks and finite-queue sweep
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/e7_3_queue_pressure.py | tee e7-3.log
+          grep -Fxq 'E7_3_SYNTHETIC_PASS scenarios 144 invariants conservation and no silent loss' e7-3.log
+          cp e7-3.log e7-3-results/
+          printf '%s\n' "$GITHUB_SHA" > e7-3-results/commit.txt
+          printf '%s\n' "$GITHUB_RUN_ID" > e7-3-results/run_id.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: novaathena-e7-3-synthetic
+          path: e7-3-results/
+          retention-days: 90
+      - name: Report run
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "E7.3 synthetic: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID | status: $JOB_STATUS | commit: $GITHUB_SHA"

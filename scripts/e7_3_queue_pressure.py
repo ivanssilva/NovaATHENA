@@ -27,8 +27,8 @@ def simulate(arrivals, learn_cap, control_cap, learn_rate, control_rate, policy)
                 item, born = control.popleft()
                 completed += 1
                 latencies.append(cycle - born + 1)
-        # At most one accepted new item per cycle (single dispatch interface).
-        if pending and pending[0][1] <= cycle:
+        # All offered items for this cycle; backpressure retains pending head.
+        while pending and pending[0][1] <= cycle:
             if len(learn) < learn_cap:
                 learn.append(pending.popleft())
                 accepted += 1
@@ -37,6 +37,7 @@ def simulate(arrivals, learn_cap, control_cap, learn_rate, control_rate, policy)
                 dropped += 1
             else:
                 blocked += 1
+                break
         max_learn = max(max_learn, len(learn))
         max_control = max(max_control, len(control))
         cycle += 1

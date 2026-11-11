@@ -1,0 +1,36 @@
+name: NovaATHENA E7.2 publication pilot
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions: {contents: read, issues: write}
+jobs:
+  publication-pilot:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.title == '[RUN] NovaATHENA E7.2 publication pilot'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic publication microcases
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p e7-2-results
+          printf '%s\n' "$GITHUB_SHA" > e7-2-results/commit.txt
+          printf '%s\n' "$GITHUB_RUN_ID" > e7-2-results/run_id.txt
+          python3 -u scripts/e7_2_publication_microcases.py | tee e7-2-results/e7-2.log
+          grep -Fxq '6 casos, 2 políticas validadas, 0 publicações indevidas; controle sem validação detectado em 6/6 casos.' e7-2-results/e7-2.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: novaathena-e7-2-publication-pilot
+          path: e7-2-results/
+          retention-days: 90
+      - name: Report run
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" --body "E7.2 pilot: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID | status: $JOB_STATUS | commit: $GITHUB_SHA | artifact: novaathena-e7-2-publication-pilot"
